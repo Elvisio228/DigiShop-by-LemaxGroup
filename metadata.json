@@ -1,0 +1,6 @@
+{
+  "name": "Digishop - Marché Digital",
+  "description": "Votre marché digital, à portée de clic. Plateforme e-commerce haut de gamme de produits numériques téléchargeables immédiatement : e-books, templates, ressources graphiques et formations.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

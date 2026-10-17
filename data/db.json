@@ -1,0 +1,1047 @@
+{
+  "users": [
+    {
+      "id": "usr-admin-1",
+      "name": "Directeur Digishop",
+      "email": "admin@digishop.com",
+      "role": "admin",
+      "phone": "+33 6 12 34 56 78",
+      "createdAt": "2026-01-01T08:00:00Z",
+      "ordersCount": 1,
+      "totalSpent": 0,
+      "passwordHash": "14262378a38c25e0e44782574a493672cc83595e4dbfae4618f41e35281775d836152cd6925bb06294b86ed7832bb606af63b02bd522733610de8214e7da3101",
+      "salt": "0057c7b6472ed530e7260db433cd51c1"
+    },
+    {
+      "id": "usr-client-1",
+      "name": "Thomas Laurent",
+      "email": "client@digishop.com",
+      "role": "customer",
+      "phone": "+33 6 98 76 54 32",
+      "createdAt": "2026-02-10T11:20:00Z",
+      "ordersCount": 2,
+      "totalSpent": 78.9,
+      "passwordHash": "c7df404d846e8edb459d434b3b943a47d089818b814f771d7ee2bbd5b69730a46494f4b543965e5ef5d3f72890d273c31abc5ffabbbfe15f3e685c8ae3bb38dd",
+      "salt": "98698a3ec5b1c677f90f2a6ef4ced245"
+    },
+    {
+      "id": "usr-1792251753200-08905295",
+      "name": "Max Elvis Lengema",
+      "email": "lemaxshop01@gmail.com",
+      "role": "admin",
+      "createdAt": "2026-10-17T15:42:33.200Z",
+      "ordersCount": 0,
+      "totalSpent": 0,
+      "passwordHash": "9fae72e0dafdf3a1ca967b96bc5a47ad855f1bb70b7b227353679f62caac4f937a3dd3ed354a5d0b481ce2093efabcbc43e92151a913caddb77280f435ac083b",
+      "salt": "a7270d33f181f707ff021f9a0bfab217"
+    }
+  ],
+  "products": [
+    {
+      "id": "prod-1",
+      "slug": "guide-marketing-digital",
+      "title": "Guide Ultime du Marketing Digital & Croissance",
+      "shortDescription": "Stratégies concrètes, tunnels de conversion et acquisition payante & organique pour propulser votre marque.",
+      "fullDescription": "Ce guide complet de 180 pages est le manuel de référence pour maîtriser l'acquisition client moderne. \nConçu pour les entrepreneurs, freelances et créateurs, il détaille pas à pas les méthodes éprouvées pour structurer vos canaux de vente : SEO prédictif, stratégies de contenu virales, campagnes publicitaires rentables (Meta Ads & Google Ads) et optimisation des taux de conversion.\n\nInclus dans le pack :\n- Manuel complet en format PDF haute définition + version ePub.\n- 12 fiches d'action prêtes à l'emploi.\n- Grille d'audit marketing en fichier tableur.\n- Accès aux mises à jour gratuites pendant 1 an.",
+      "price": 29.9,
+      "originalPrice": 49.9,
+      "category": "ebooks",
+      "categoryLabel": "E-books",
+      "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+      "tags": [
+        "Marketing",
+        "Acquisition",
+        "Conversion",
+        "E-book",
+        "SEO"
+      ],
+      "downloadsCount": 1426,
+      "rating": 4.9,
+      "reviewsCount": 88,
+      "isNew": false,
+      "isPromo": true,
+      "isFeatured": true,
+      "isRecommended": true,
+      "status": "published",
+      "licenseType": "Licence Standard",
+      "fileDetails": {
+        "fileName": "digishop_guide_marketing_digital_v2.pdf",
+        "fileSize": "14.2 Mo",
+        "fileFormat": "PDF + ePub + Fiches d'action",
+        "version": "2.4 (Édition 2026)"
+      },
+      "features": [
+        "180 pages de tactiques actionnables",
+        "Exemples de tunnels de conversion réels",
+        "Templates de copywriting haute conversion",
+        "Téléchargement immédiat et sans limite de temps"
+      ],
+      "createdAt": "2026-01-15T10:00:00Z",
+      "updatedAt": "2026-03-20T14:30:00Z"
+    },
+    {
+      "id": "prod-2",
+      "slug": "templates-business-plan-pitch",
+      "title": "Pack Ultime Business Plan & Pitch Deck Exécutif",
+      "shortDescription": "Modèles financiers prévisionnels et présentations professionnelles pour convaincre banques et investisseurs.",
+      "fullDescription": "Le pack incontournable pour sécuriser vos levées de fonds et financements. Développé par des consultants seniors en stratégie financière, ce pack contient un modèle financier automatisé sur 3 ans (compte de résultat, trésorerie, BFR) ainsi que des présentations percutantes compatibles PowerPoint, Keynote et Google Slides.\n\nInclus dans le pack :\n- Modèle de Business Plan rédigé modifiable (Word & Google Docs).\n- Modèle financier automatisé avec calcul des ratios (Excel & Sheets).\n- Pitch Deck 30 slides design moderne (PPTX & Canva).\n- Guide d'accompagnement financier pas-à-pas.",
+      "price": 49,
+      "originalPrice": 79,
+      "category": "templates",
+      "categoryLabel": "Templates",
+      "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+      "tags": [
+        "Business Plan",
+        "Pitch Deck",
+        "Finance",
+        "Startup",
+        "Excel"
+      ],
+      "downloadsCount": 982,
+      "rating": 4.8,
+      "reviewsCount": 64,
+      "isNew": true,
+      "isPromo": true,
+      "isFeatured": true,
+      "isRecommended": true,
+      "status": "published",
+      "licenseType": "Licence Commerciale",
+      "fileDetails": {
+        "fileName": "digishop_executive_pitch_business_plan.zip",
+        "fileSize": "32.5 Mo",
+        "fileFormat": "ZIP (XLSX, PPTX, DOCX, Canva Links)",
+        "version": "3.1"
+      },
+      "features": [
+        "Formules Excel pré-calculées avec graphiques dynamiques",
+        "30 slides de Pitch Deck optimisées pour investisseurs",
+        "Entièrement personnalisable à vos couleurs",
+        "Licence commerciale incluse"
+      ],
+      "createdAt": "2026-02-01T08:00:00Z",
+      "updatedAt": "2026-03-15T11:00:00Z"
+    },
+    {
+      "id": "prod-3",
+      "slug": "pack-3d-icons-ui-assets",
+      "title": "Mega Pack 3D Icons & UI Assets Haute Résolution",
+      "shortDescription": "Plus de 350 icônes 3D modélisées, textures réalistes et assets d'interface prêts pour le web et mobile.",
+      "fullDescription": "Donnez une dimension premium et technologique à vos applications web, sites e-commerce et présentations. Ce pack exclusif regroupe 350+ icônes 3D rendues avec des matériaux verre dépoli, chrome et clay moderniste.\n\nInclus dans le pack :\n- Fichiers PNG détourés 3000x3000px avec transparence.\n- Fichiers Figma prêts à l'emploi avec composants organisés.\n- Fichiers source Blender (.blend) avec matériaux procéduraux.\n- Droits d'usage commercial illimité.",
+      "price": 39,
+      "originalPrice": 65,
+      "category": "graphisme",
+      "categoryLabel": "Ressources graphiques",
+      "image": "/src/assets/images/product_graphics_3d_icons_1791461343514.jpg",
+      "tags": [
+        "3D",
+        "Icons",
+        "Figma",
+        "UI Design",
+        "Blender",
+        "Assets"
+      ],
+      "downloadsCount": 1650,
+      "rating": 5,
+      "reviewsCount": 112,
+      "isNew": false,
+      "isPromo": true,
+      "isFeatured": true,
+      "isRecommended": false,
+      "status": "published",
+      "licenseType": "Licence Étendue",
+      "fileDetails": {
+        "fileName": "digishop_mega_3d_icons_ui_pack.zip",
+        "fileSize": "148.0 Mo",
+        "fileFormat": "ZIP (PNG, Figma, Blender .blend)",
+        "version": "2.0"
+      },
+      "features": [
+        "350+ icônes haute résolution en 4 angles de caméra",
+        "Fichiers Figma avec variables et styles globaux",
+        "Transparence alpha parfaite sans bavure",
+        "Mises à jour gratuites incluses"
+      ],
+      "createdAt": "2026-01-20T12:00:00Z",
+      "updatedAt": "2026-02-28T16:00:00Z"
+    },
+    {
+      "id": "prod-4",
+      "slug": "masterclass-ecommerce-scaling",
+      "title": "Masterclass E-commerce & Scaling International",
+      "shortDescription": "Programme complet en 8 modules vidéo, études de cas réelles et plans de déploiement multi-devises.",
+      "fullDescription": "Une immersion stratégique de 12 heures de contenu vidéo condensé pour scaler une boutique en ligne rentable. Du sourcing éthique à la logistique omnicanale, en passant par l'optimisation des passerelles de paiement (Afrique de l'Ouest, Europe, USA), apprenez ce que les leaders du secteur ne partagent jamais publiquement.\n\nInclus dans la masterclass :\n- Accès illimité aux 8 modules de formation en HD.\n- Cahier d'exercices et plans d'action téléchargeables.\n- Checklist d'intégration des paiements (PayPal, Cartes, Moov Money, Mobile Money).\n- Certificat d'achèvement Digishop Academy.",
+      "price": 89,
+      "originalPrice": 149,
+      "category": "formations",
+      "categoryLabel": "Formations",
+      "image": "/src/assets/images/product_course_ecommerce_1791461354436.jpg",
+      "tags": [
+        "E-commerce",
+        "Formation",
+        "Scaling",
+        "Vente",
+        "Masterclass"
+      ],
+      "downloadsCount": 741,
+      "rating": 4.9,
+      "reviewsCount": 53,
+      "isNew": true,
+      "isPromo": false,
+      "isFeatured": true,
+      "isRecommended": true,
+      "status": "published",
+      "licenseType": "Licence Standard",
+      "fileDetails": {
+        "fileName": "digishop_masterclass_ecommerce_kit.zip",
+        "fileSize": "45.0 Mo",
+        "fileFormat": "ZIP (Workbook, Fiches Audio, Accès Vidéo)",
+        "version": "1.2"
+      },
+      "features": [
+        "12h de contenu vidéo haute définition avec accès permanent",
+        "Fiches de travail synthétiques et plans de croissance",
+        "Méthodes de conversion e-commerce testées sur 500k€+ de volume",
+        "Accès communautaire privé des apprenants"
+      ],
+      "createdAt": "2026-02-15T09:00:00Z",
+      "updatedAt": "2026-03-25T15:00:00Z"
+    },
+    {
+      "id": "prod-5",
+      "slug": "pack-juridique-contrats-professionnels",
+      "title": "Pack Juridique Pro : Contrats, CGV & Accords Numériques",
+      "shortDescription": "Modèles de contrats commerciaux, conditions de vente et politiques RGPD rédigés par des juristes d'affaires.",
+      "fullDescription": "Sécurisez votre activité digitale et vos prestations de services avec des modèles de contrats solides, conformes et immédiatement adaptables. Ne laissez aucun flou juridique nuire à votre réputation ou vos paiements.\n\nInclus dans le pack :\n- Contrat de prestation de services freelances et agences.\n- Conditions Générales de Vente (CGV) pour produits numériques.\n- Accord de confidentialité bilatéral (NDA).\n- Politique de confidentialité et gestion des cookies conforme RGPD.\n- Modèles de mise en demeure et relance d'impayés.",
+      "price": 34,
+      "originalPrice": 59,
+      "category": "documents",
+      "categoryLabel": "Documents professionnels",
+      "image": "/src/assets/images/hero_digishop_showcase_1791461301216.jpg",
+      "tags": [
+        "Juridique",
+        "Contrats",
+        "CGV",
+        "NDA",
+        "Documents",
+        "Droit"
+      ],
+      "downloadsCount": 1120,
+      "rating": 4.8,
+      "reviewsCount": 76,
+      "isNew": false,
+      "isPromo": true,
+      "isFeatured": false,
+      "isRecommended": true,
+      "status": "published",
+      "licenseType": "Licence Commerciale",
+      "fileDetails": {
+        "fileName": "digishop_pack_juridique_pro_2026.zip",
+        "fileSize": "8.4 Mo",
+        "fileFormat": "ZIP (DOCX modifiables, PDF guides)",
+        "version": "4.0"
+      },
+      "features": [
+        "Clauses pré-validées pour la vente de biens digitaux",
+        "Format Word et LibreOffice avec commentaires explicatifs",
+        "Clauses spécifiques de propriété intellectuelle",
+        "Téléchargement immédiat et prêt à l'emploi"
+      ],
+      "createdAt": "2026-01-10T14:00:00Z",
+      "updatedAt": "2026-03-10T09:00:00Z"
+    },
+    {
+      "id": "prod-6",
+      "slug": "templates-cv-professionnels",
+      "title": "Kit Ultime CV & Lettres de Motivation à Fort Impact",
+      "shortDescription": "15 modèles de CV modernes, sobres et optimisés ATS pour décrocher des entretiens au niveau cadre et international.",
+      "fullDescription": "Maximisez vos chances d'embauche avec des templates de CV modernes conçus pour passer les filtres logiciels de recrutement (ATS) tout en séduisant les recruteurs humains en moins de 6 secondes.\n\nInclus dans le kit :\n- 15 templates de CV 1 page et 2 pages.\n- Modèles de lettres de motivation assortis.\n- Compatibles Word, Pages, Canva et Google Docs.\n- Guide des 50 verbes d'action pour décupler la portée de vos réalisations.",
+      "price": 19.9,
+      "originalPrice": 29.9,
+      "category": "templates",
+      "categoryLabel": "Templates",
+      "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+      "tags": [
+        "CV",
+        "Carrière",
+        "Emploi",
+        "Templates",
+        "Canva",
+        "Word"
+      ],
+      "downloadsCount": 2310,
+      "rating": 4.9,
+      "reviewsCount": 145,
+      "isNew": false,
+      "isPromo": false,
+      "isFeatured": false,
+      "isRecommended": true,
+      "status": "published",
+      "licenseType": "Licence Standard",
+      "fileDetails": {
+        "fileName": "digishop_kit_cv_impact_2026.zip",
+        "fileSize": "24.1 Mo",
+        "fileFormat": "ZIP (Word, Pages, Liens Canva)",
+        "version": "2.5"
+      },
+      "features": [
+        "Format testé avec succès sur les ATS modernes",
+        "Typographies gratuites incluses",
+        "Sections modulaires et faciles à réorganiser",
+        "Conseils de rédaction inclus dans chaque modèle"
+      ],
+      "createdAt": "2026-01-05T10:00:00Z",
+      "updatedAt": "2026-03-01T11:00:00Z"
+    },
+    {
+      "id": "prod-7",
+      "slug": "guide-canva-creation-contenu",
+      "title": "Guide Canva Pro & Création de Contenu Visuel",
+      "shortDescription": "Apprenez à concevoir des visuels percutants sans compétences préalables en graphisme.",
+      "fullDescription": "Le manuel complet pour dompter Canva de A à Z. Des règles fondamentales de composition aux astuces de productivité avec l'intelligence artificielle intégrée, créez vos bannières, carrousels et supports publicitaires en un temps record.",
+      "price": 24,
+      "originalPrice": 39,
+      "category": "ebooks",
+      "categoryLabel": "E-books",
+      "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+      "tags": [
+        "Canva",
+        "Graphisme",
+        "Design",
+        "Réseaux Sociaux",
+        "E-book"
+      ],
+      "downloadsCount": 891,
+      "rating": 4.7,
+      "reviewsCount": 42,
+      "isNew": true,
+      "isPromo": true,
+      "isFeatured": false,
+      "isRecommended": false,
+      "status": "published",
+      "licenseType": "Licence Standard",
+      "fileDetails": {
+        "fileName": "digishop_guide_canva_pro.pdf",
+        "fileSize": "11.8 Mo",
+        "fileFormat": "PDF interactif",
+        "version": "1.0"
+      },
+      "features": [
+        "120 pages illustrées avec exemples avant/après",
+        "Palette de 50 combinaisons de couleurs prêtes à l'emploi",
+        "Raccourcis clavier essentiels pour gagner 3h par semaine",
+        "Téléchargement direct"
+      ],
+      "createdAt": "2026-03-01T10:00:00Z",
+      "updatedAt": "2026-03-22T14:00:00Z"
+    },
+    {
+      "id": "prod-8",
+      "slug": "modeles-devis-facturation-excel",
+      "title": "Système Devis & Facturation Automatisé Excel / Sheets",
+      "shortDescription": "Tableur automatisé avec gestion des clients, numérotation légale, calcul des taxes et génération PDF.",
+      "fullDescription": "Évitez les logiciels d'abonnement coûteux grâce à ce tableau de bord complet de gestion commerciale. Gérez vos devis, factures, acomptes et relances en quelques clics grâce à des macros sécurisées et formules sans erreur.",
+      "price": 22,
+      "originalPrice": 35,
+      "category": "documents",
+      "categoryLabel": "Documents professionnels",
+      "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+      "tags": [
+        "Facturation",
+        "Devis",
+        "Comptabilité",
+        "Excel",
+        "Google Sheets"
+      ],
+      "downloadsCount": 1540,
+      "rating": 4.8,
+      "reviewsCount": 91,
+      "isNew": false,
+      "isPromo": true,
+      "isFeatured": false,
+      "isRecommended": true,
+      "status": "published",
+      "licenseType": "Licence Commerciale",
+      "fileDetails": {
+        "fileName": "digishop_systeme_facturation_v3.zip",
+        "fileSize": "6.2 Mo",
+        "fileFormat": "ZIP (XLSX, Google Sheets Template)",
+        "version": "3.0"
+      },
+      "features": [
+        "Numérotation chronologique automatisée",
+        "Support multi-taux de TVA et franchise en base",
+        "Bouton 1-clic pour exporter en PDF prêt pour le client",
+        "Suivi des factures impayées et relances"
+      ],
+      "createdAt": "2026-01-18T16:00:00Z",
+      "updatedAt": "2026-03-18T10:00:00Z"
+    }
+  ],
+  "orders": [
+    {
+      "userId": "usr-admin-1",
+      "customerName": "Directeur Digishop",
+      "customerEmail": "admin@digishop.com",
+      "customerPhone": "+33 6 12 34 56 78",
+      "items": [
+        {
+          "productId": "prod-1",
+          "slug": "guide-marketing-digital",
+          "title": "Guide Ultime du Marketing Digital & Croissance",
+          "price": 29.9,
+          "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+          "categoryLabel": "E-books",
+          "fileDetails": {
+            "fileName": "digishop_guide_marketing_digital_v2.pdf",
+            "fileSize": "14.2 Mo",
+            "fileFormat": "PDF + ePub + Fiches d'action",
+            "version": "2.4 (Édition 2026)"
+          }
+        }
+      ],
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "paymentMethod": "paydunya",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "paydunyaToken": "PD-TOK-1792247017709",
+        "channel": "tmoney",
+        "payerPhone": "+33 6 12 34 56 78",
+        "notes": "Paiement PayDunya via canal tmoney"
+      },
+      "id": "ord-1792247016422-cb51fc",
+      "orderNumber": "DS-2026-1012",
+      "downloadToken": "edb17fd082f67bf9635d8e6acd4a4a979a2cf28aee76a0ef",
+      "downloadExpiresAt": "2026-11-16T14:23:36.422Z",
+      "downloadCount": 2,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-17T14:23:36.422Z"
+    },
+    {
+      "customerName": "Marc Evem",
+      "customerEmail": "marckocobis02@gmail.com",
+      "customerPhone": "",
+      "items": [
+        {
+          "productId": "prod-2",
+          "slug": "templates-business-plan-pitch",
+          "title": "Pack Ultime Business Plan & Pitch Deck Exécutif",
+          "price": 49,
+          "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+          "categoryLabel": "Templates",
+          "fileDetails": {
+            "fileName": "digishop_executive_pitch_business_plan.zip",
+            "fileSize": "32.5 Mo",
+            "fileFormat": "ZIP (XLSX, PPTX, DOCX, Canva Links)",
+            "version": "3.1"
+          }
+        }
+      ],
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "paymentMethod": "mixx",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "merchantNumber": "90107715",
+        "payerPhone": "",
+        "transactionRef": "Mixx64677887868",
+        "notes": "Paiement Mixx vers le numéro 90107715"
+      },
+      "id": "ord-1791635028446-013d2a",
+      "orderNumber": "DS-2026-1011",
+      "downloadToken": "c8492b20e5a4af58e2ded4b0ec610decf88f872ee764b331",
+      "downloadExpiresAt": "2026-11-09T12:23:48.446Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-10T12:23:48.446Z",
+      "verifiedAt": "2026-10-13T12:00:50.558Z",
+      "verifiedBy": "admin@digishop.com"
+    },
+    {
+      "customerName": "Marc Evem",
+      "customerEmail": "marckocobis02@gmail.com",
+      "customerPhone": "",
+      "items": [
+        {
+          "productId": "prod-1",
+          "slug": "guide-marketing-digital",
+          "title": "Guide Ultime du Marketing Digital & Croissance",
+          "price": 29.9,
+          "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+          "categoryLabel": "E-books",
+          "fileDetails": {
+            "fileName": "digishop_guide_marketing_digital_v2.pdf",
+            "fileSize": "14.2 Mo",
+            "fileFormat": "PDF + ePub + Fiches d'action",
+            "version": "2.4 (Édition 2026)"
+          }
+        }
+      ],
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "paymentMethod": "moov",
+      "paymentStatus": "refunded",
+      "paymentDetails": {
+        "merchantNumber": "99668884",
+        "payerPhone": "",
+        "transactionRef": "Fg466⁶",
+        "notes": "Transfert Moov Money vers compte marchand 99668884"
+      },
+      "id": "ord-1791634648144-0640e2",
+      "orderNumber": "DS-2026-1010",
+      "downloadToken": "fb16e4293b87ce807a91ea8c439e874c8d106ecab7fe7aca",
+      "downloadExpiresAt": "2026-11-09T12:17:28.144Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-10T12:17:28.144Z",
+      "verifiedAt": "2026-10-13T11:59:52.318Z",
+      "verifiedBy": "admin@digishop.com"
+    },
+    {
+      "customerName": "Marc evem Evem",
+      "customerEmail": "marckocobis02@gmail.com",
+      "customerPhone": "",
+      "items": [
+        {
+          "productId": "prod-4",
+          "slug": "masterclass-ecommerce-scaling",
+          "title": "Masterclass E-commerce & Scaling International",
+          "price": 89,
+          "image": "/src/assets/images/product_course_ecommerce_1791461354436.jpg",
+          "categoryLabel": "Formations",
+          "fileDetails": {
+            "fileName": "digishop_masterclass_ecommerce_kit.zip",
+            "fileSize": "45.0 Mo",
+            "fileFormat": "ZIP (Workbook, Fiches Audio, Accès Vidéo)",
+            "version": "1.2"
+          }
+        }
+      ],
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "paymentMethod": "paydunya",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "paydunyaToken": "PD-TOK-1791634253481",
+        "channel": "moov",
+        "payerPhone": "99668884",
+        "notes": "Paiement PayDunya via canal moov"
+      },
+      "id": "ord-1791634254713-6a91ce",
+      "orderNumber": "DS-2026-1009",
+      "downloadToken": "650f7fa3331ae01def4bfb6e2b41ef5fd2bde7101c576ba7",
+      "downloadExpiresAt": "2026-11-09T12:10:54.713Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-10T12:10:54.713Z"
+    },
+    {
+      "customerName": "Marc Evem",
+      "customerEmail": "marckocobis02@gmail.com",
+      "customerPhone": "",
+      "items": [
+        {
+          "productId": "prod-1",
+          "slug": "guide-marketing-digital",
+          "title": "Guide Ultime du Marketing Digital & Croissance",
+          "price": 29.9,
+          "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+          "categoryLabel": "E-books",
+          "fileDetails": {
+            "fileName": "digishop_guide_marketing_digital_v2.pdf",
+            "fileSize": "14.2 Mo",
+            "fileFormat": "PDF + ePub + Fiches d'action",
+            "version": "2.4 (Édition 2026)"
+          }
+        }
+      ],
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "paymentMethod": "paypal",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "paypalOrderId": "PAYPAL-ORD-1791633750817",
+        "payerEmail": "marckocobis02@gmail.com",
+        "merchantAccount": "elvisiolengbis@gmail.com"
+      },
+      "id": "ord-1791633751196-16a0e1",
+      "orderNumber": "DS-2026-1008",
+      "downloadToken": "1751dfe171c400d2b3f10bfbd074a249c63c0b764260810e",
+      "downloadExpiresAt": "2026-11-09T12:02:31.196Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-10T12:02:31.196Z"
+    },
+    {
+      "customerName": "Mzrc Evemola",
+      "customerEmail": "marckocobis02@gmail.com",
+      "customerPhone": "",
+      "items": [
+        {
+          "productId": "prod-1",
+          "slug": "guide-marketing-digital",
+          "title": "Guide Ultime du Marketing Digital & Croissance",
+          "price": 29.9,
+          "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+          "categoryLabel": "E-books",
+          "fileDetails": {
+            "fileName": "digishop_guide_marketing_digital_v2.pdf",
+            "fileSize": "14.2 Mo",
+            "fileFormat": "PDF + ePub + Fiches d'action",
+            "version": "2.4 (Édition 2026)"
+          }
+        }
+      ],
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "paymentMethod": "card",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "channel": "card_regional",
+        "paydunyaToken": "PD-CARD-1791633554995",
+        "payerName": "Mzrc Evemola",
+        "notes": "Paiement Carte Bancaire (Visa/Mastercard) via PayDunya"
+      },
+      "id": "ord-1791633555182-d960d7",
+      "orderNumber": "DS-2026-1007",
+      "downloadToken": "92b18f2e7ccf72c0491a1bf9446a0e7879b63daa31a6a33b",
+      "downloadExpiresAt": "2026-11-09T11:59:15.183Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-10T11:59:15.183Z"
+    },
+    {
+      "customerName": "Marc Evemola",
+      "customerEmail": "marckocobis02@gmail.com",
+      "customerPhone": "",
+      "items": [
+        {
+          "productId": "prod-1",
+          "slug": "guide-marketing-digital",
+          "title": "Guide Ultime du Marketing Digital & Croissance",
+          "price": 29.9,
+          "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+          "categoryLabel": "E-books",
+          "fileDetails": {
+            "fileName": "digishop_guide_marketing_digital_v2.pdf",
+            "fileSize": "14.2 Mo",
+            "fileFormat": "PDF + ePub + Fiches d'action",
+            "version": "2.4 (Édition 2026)"
+          }
+        }
+      ],
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "paymentMethod": "card",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "channel": "card_regional",
+        "paydunyaToken": "PD-CARD-1791631640740",
+        "payerName": "Marc Evemola",
+        "notes": "Paiement Carte Bancaire (Visa/Mastercard) via PayDunya"
+      },
+      "id": "ord-1791631640940-87c9c7",
+      "orderNumber": "DS-2026-1006",
+      "downloadToken": "5ec999e56cac3a2ba2cde2f30fa80568a26cb73993eb525e",
+      "downloadExpiresAt": "2026-11-09T11:27:20.941Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-10T11:27:20.941Z"
+    },
+    {
+      "customerName": "Marc Evemola",
+      "customerEmail": "marckocobis02@gmail.com",
+      "customerPhone": "",
+      "items": [
+        {
+          "productId": "prod-7",
+          "slug": "guide-canva-creation-contenu",
+          "title": "Guide Canva Pro & Création de Contenu Visuel",
+          "price": 24,
+          "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+          "categoryLabel": "E-books",
+          "fileDetails": {
+            "fileName": "digishop_guide_canva_pro.pdf",
+            "fileSize": "11.8 Mo",
+            "fileFormat": "PDF interactif",
+            "version": "1.0"
+          }
+        }
+      ],
+      "subtotal": 0,
+      "discountAmount": 0,
+      "totalAmount": 0,
+      "paymentMethod": "paydunya",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "paydunyaToken": "PD-TOK-1791626649114",
+        "channel": "card_regional",
+        "payerPhone": "",
+        "notes": "Paiement PayDunya via canal card_regional"
+      },
+      "id": "ord-1791626649483-d67867",
+      "orderNumber": "DS-2026-1005",
+      "downloadToken": "8621b215c457146196cc7eaf07c0a18fa6c40be0aee91679",
+      "downloadExpiresAt": "2026-11-09T10:04:09.483Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-10T10:04:09.483Z"
+    },
+    {
+      "customerName": "Marc koco Evemola",
+      "customerEmail": "marckocobis02@gmail.com",
+      "customerPhone": "+22890801777",
+      "items": [
+        {
+          "productId": "prod-1",
+          "slug": "guide-marketing-digital",
+          "title": "Guide Ultime du Marketing Digital & Croissance",
+          "price": 29.9,
+          "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+          "categoryLabel": "E-books",
+          "fileDetails": {
+            "fileName": "digishop_guide_marketing_digital_v2.pdf",
+            "fileSize": "14.2 Mo",
+            "fileFormat": "PDF + ePub + Fiches d'action",
+            "version": "2.4 (Édition 2026)"
+          }
+        },
+        {
+          "productId": "prod-2",
+          "slug": "templates-business-plan-pitch",
+          "title": "Pack Ultime Business Plan & Pitch Deck Exécutif",
+          "price": 49,
+          "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+          "categoryLabel": "Templates",
+          "fileDetails": {
+            "fileName": "digishop_executive_pitch_business_plan.zip",
+            "fileSize": "32.5 Mo",
+            "fileFormat": "ZIP (XLSX, PPTX, DOCX, Canva Links)",
+            "version": "3.1"
+          }
+        }
+      ],
+      "subtotal": 78.9,
+      "discountAmount": 0,
+      "totalAmount": 78.9,
+      "paymentMethod": "paypal",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "paypalOrderId": "PAYPAL-ORD-1791625821276",
+        "payerEmail": "marckocobis02@gmail.com",
+        "merchantAccount": "elvisiolengbis@gmail.com"
+      },
+      "id": "ord-1791625822577-fad308",
+      "orderNumber": "DS-2026-1004",
+      "downloadToken": "cb8176751114148a866b8862c058b53011836b785a9b994b",
+      "downloadExpiresAt": "2026-11-09T09:50:22.577Z",
+      "downloadCount": 4,
+      "maxDownloads": 5,
+      "createdAt": "2026-10-10T09:50:22.577Z"
+    },
+    {
+      "id": "ord-1001",
+      "orderNumber": "DS-2026-1001",
+      "userId": "usr-client-1",
+      "customerName": "Thomas Laurent",
+      "customerEmail": "client@digishop.com",
+      "customerPhone": "+33 6 98 76 54 32",
+      "items": [
+        {
+          "productId": "prod-1",
+          "slug": "guide-marketing-digital",
+          "title": "Guide Ultime du Marketing Digital & Croissance",
+          "price": 29.9,
+          "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+          "categoryLabel": "E-books",
+          "fileDetails": {
+            "fileName": "digishop_guide_marketing_digital_v2.pdf",
+            "fileSize": "14.2 Mo",
+            "fileFormat": "PDF + ePub + Fiches d'action",
+            "version": "2.4 (Édition 2026)"
+          }
+        },
+        {
+          "productId": "prod-2",
+          "slug": "templates-business-plan-pitch",
+          "title": "Pack Ultime Business Plan & Pitch Deck Exécutif",
+          "price": 49,
+          "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+          "categoryLabel": "Templates",
+          "fileDetails": {
+            "fileName": "digishop_executive_pitch_business_plan.zip",
+            "fileSize": "32.5 Mo",
+            "fileFormat": "ZIP (XLSX, PPTX, DOCX, Canva Links)",
+            "version": "3.1"
+          }
+        }
+      ],
+      "subtotal": 78.9,
+      "discountAmount": 0,
+      "totalAmount": 78.9,
+      "paymentMethod": "card",
+      "paymentStatus": "paid",
+      "paymentDetails": {
+        "cardLast4": "4242"
+      },
+      "downloadToken": "c507683c1c379a410009a08e4d5a7add1183971d91669190",
+      "downloadExpiresAt": "2026-11-09T08:36:33.456Z",
+      "downloadCount": 1,
+      "maxDownloads": 5,
+      "createdAt": "2026-03-20T10:15:00Z",
+      "verifiedAt": "2026-03-20T10:15:05Z"
+    },
+    {
+      "id": "ord-1002",
+      "orderNumber": "DS-2026-1002",
+      "customerName": "Amadou Koné",
+      "customerEmail": "amadou.kone@example.com",
+      "customerPhone": "+225 07 88 99 00",
+      "items": [
+        {
+          "productId": "prod-3",
+          "slug": "pack-3d-icons-ui-assets",
+          "title": "Mega Pack 3D Icons & UI Assets Haute Résolution",
+          "price": 39,
+          "image": "/src/assets/images/product_graphics_3d_icons_1791461343514.jpg",
+          "categoryLabel": "Ressources graphiques",
+          "fileDetails": {
+            "fileName": "digishop_mega_3d_icons_ui_pack.zip",
+            "fileSize": "148.0 Mo",
+            "fileFormat": "ZIP (PNG, Figma, Blender .blend)",
+            "version": "2.0"
+          }
+        }
+      ],
+      "subtotal": 39,
+      "discountAmount": 0,
+      "totalAmount": 39,
+      "paymentMethod": "moov",
+      "paymentStatus": "pending_payment",
+      "paymentDetails": {
+        "payerPhone": "99668884",
+        "transactionRef": "MOOV-TX-88492019",
+        "notes": "Transfert effectué vers le numéro marchand Moov Money 99668884"
+      },
+      "downloadToken": "eba735bdb1c0a08ab092cd95901835a8f7c31de4dbf8622c",
+      "downloadExpiresAt": "2026-10-17T08:36:33.457Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-03-24T14:45:00Z"
+    },
+    {
+      "id": "ord-1003",
+      "orderNumber": "DS-2026-1003",
+      "customerName": "Koffi Mensah",
+      "customerEmail": "koffi.mensah@example.com",
+      "customerPhone": "+228 90 10 77 15",
+      "items": [
+        {
+          "productId": "prod-4",
+          "slug": "masterclass-ecommerce-scaling",
+          "title": "Masterclass E-commerce & Scaling International",
+          "price": 89,
+          "image": "/src/assets/images/product_course_ecommerce_1791461354436.jpg",
+          "categoryLabel": "Formations",
+          "fileDetails": {
+            "fileName": "digishop_masterclass_ecommerce_kit.zip",
+            "fileSize": "45.0 Mo",
+            "fileFormat": "ZIP (Workbook, Fiches Audio, Accès Vidéo)",
+            "version": "1.2"
+          }
+        }
+      ],
+      "subtotal": 89,
+      "discountAmount": 0,
+      "totalAmount": 89,
+      "paymentMethod": "mixx",
+      "paymentStatus": "pending_payment",
+      "paymentDetails": {
+        "payerPhone": "90107715",
+        "transactionRef": "MIXX-TRX-990145",
+        "notes": "Paiement Mixx au numéro 90107715"
+      },
+      "downloadToken": "8f92ac4b49092e6708153fc55025974f068314ee73d9848f",
+      "downloadExpiresAt": "2026-10-17T08:36:33.457Z",
+      "downloadCount": 0,
+      "maxDownloads": 5,
+      "createdAt": "2026-03-25T09:12:00Z"
+    }
+  ],
+  "coupons": [
+    {
+      "id": "coup-1",
+      "code": "BIENVENUE10",
+      "discountType": "percentage",
+      "discountValue": 10,
+      "minOrderValue": 20,
+      "maxUses": 500,
+      "currentUses": 124,
+      "expiresAt": "2026-12-31T23:59:59Z",
+      "isActive": true
+    },
+    {
+      "id": "coup-2",
+      "code": "DIGI20",
+      "discountType": "percentage",
+      "discountValue": 20,
+      "minOrderValue": 50,
+      "maxUses": 200,
+      "currentUses": 68,
+      "expiresAt": "2026-12-31T23:59:59Z",
+      "isActive": true
+    },
+    {
+      "id": "coup-3",
+      "code": "VIP5EUROS",
+      "discountType": "fixed",
+      "discountValue": 5,
+      "minOrderValue": 30,
+      "maxUses": 100,
+      "currentUses": 19,
+      "expiresAt": "2026-12-31T23:59:59Z",
+      "isActive": true
+    }
+  ],
+  "reviews": [
+    {
+      "id": "rev-1",
+      "productId": "prod-1",
+      "productTitle": "Guide Ultime du Marketing Digital & Croissance",
+      "userName": "Marc Dupuis",
+      "rating": 5,
+      "comment": "Un contenu d'une densité exceptionnelle. J'ai appliqué la méthode sur ma boutique et mes conversions ont bondi de 35% en trois semaines. Le fichier se télécharge instantanément.",
+      "isVerifiedPurchase": true,
+      "isApproved": true,
+      "createdAt": "2026-03-12T14:22:00Z"
+    },
+    {
+      "id": "rev-2",
+      "productId": "prod-2",
+      "productTitle": "Pack Ultime Business Plan & Pitch Deck Exécutif",
+      "userName": "Sarah Diallo",
+      "rating": 5,
+      "comment": "Le tableau financier Excel est une mine d'or ! Les formules sont impeccables et le pitch deck a fait forte impression devant notre banquier. Téléchargement rapide et sécurisé.",
+      "isVerifiedPurchase": true,
+      "isApproved": true,
+      "createdAt": "2026-03-18T09:40:00Z"
+    },
+    {
+      "id": "rev-3",
+      "productId": "prod-3",
+      "productTitle": "Mega Pack 3D Icons & UI Assets Haute Résolution",
+      "userName": "Alexandre Morel",
+      "rating": 5,
+      "comment": "Qualité 8k irréprochable. L'intégration dans Figma s'est faite en deux secondes. Les icônes apportent un rendu premium immédiat à notre application.",
+      "isVerifiedPurchase": true,
+      "isApproved": true,
+      "createdAt": "2026-03-24T17:15:00Z"
+    }
+  ],
+  "advertisements": [
+    {
+      "id": "ad-1",
+      "title": "Espace Publicitaire Accueil (Bannière Milieu)",
+      "position": "home_middle",
+      "badge": "Offre Spéciale Partenaire",
+      "heading": "Accélérez votre business en ligne avec notre suite d'outils partenaires",
+      "subtext": "Bénéficiez de -30% sur tous les hébergements web et outils d'automatisation cloud recommandés par Digishop.",
+      "ctaText": "Découvrir la sélection",
+      "ctaLink": "/boutique?cat=templates",
+      "bgColor": "from-sky-900 to-indigo-950",
+      "isEnabled": true
+    },
+    {
+      "id": "ad-2",
+      "title": "Espace Publicitaire Catalogue (Sidebar)",
+      "position": "catalog_sidebar",
+      "badge": "Recommandation",
+      "heading": "Besoin d'un accompagnement sur-mesure ?",
+      "subtext": "Nos experts vérifient votre tunnel de vente et vos documents légaux.",
+      "ctaText": "Consulter nos packs",
+      "ctaLink": "/boutique?cat=documents",
+      "bgColor": "from-slate-900 to-slate-950",
+      "isEnabled": true
+    },
+    {
+      "id": "ad-3",
+      "title": "Bannière d'Annonce Supérieure (Top Bar)",
+      "position": "top_bar",
+      "badge": "Sponsor & Partenaire",
+      "heading": "🚀 Boostez vos ventes : Pack Outils Cloud & Automatisation à -40%",
+      "subtext": "Offre exclusive réservée aux membres et clients Digishop ce mois-ci.",
+      "ctaText": "Profiter de l'offre",
+      "ctaLink": "/boutique?cat=formations",
+      "bgColor": "from-sky-700 via-indigo-700 to-purple-800",
+      "isEnabled": true
+    },
+    {
+      "id": "ad-4",
+      "title": "Espace Publicitaire Fiche Produit (Sidebar)",
+      "position": "product_sidebar",
+      "badge": "Partenaire Certifié",
+      "heading": "Hébergement Web & Domaine Offerts pour Débuter",
+      "subtext": "Lancez votre site ou déployez vos templates avec notre partenaire d'infrastructure haute disponibilité.",
+      "ctaText": "Découvrir l'offre partenaire",
+      "ctaLink": "/boutique?cat=templates",
+      "bgColor": "from-emerald-950 via-teal-900 to-slate-950",
+      "isEnabled": true
+    }
+  ],
+  "newsletterSubscribers": [
+    {
+      "id": "sub-1",
+      "email": "pro.creator@agency.com",
+      "createdAt": "2026-02-14T09:00:00Z"
+    },
+    {
+      "id": "sub-2",
+      "email": "designer@studio.co",
+      "createdAt": "2026-03-01T15:30:00Z"
+    }
+  ],
+  "adminLogs": [
+    {
+      "id": "log-1791892850558",
+      "adminEmail": "admin@digishop.com",
+      "action": "Validation Statut Commande",
+      "details": "Commande DS-2026-1011 passée au statut paid",
+      "timestamp": "2026-10-13T12:00:50.558Z"
+    },
+    {
+      "id": "log-1791892792855",
+      "adminEmail": "admin@digishop.com",
+      "action": "Validation Statut Commande",
+      "details": "Commande DS-2026-1010 passée au statut refunded",
+      "timestamp": "2026-10-13T11:59:52.855Z"
+    },
+    {
+      "id": "log-1791892792319",
+      "adminEmail": "admin@digishop.com",
+      "action": "Validation Statut Commande",
+      "details": "Commande DS-2026-1010 passée au statut paid",
+      "timestamp": "2026-10-13T11:59:52.319Z"
+    },
+    {
+      "id": "log-1",
+      "adminEmail": "admin@digishop.com",
+      "action": "Système initialisé",
+      "details": "Catalogue initial et politiques de téléchargement configurés",
+      "timestamp": "2026-01-01T08:00:00Z"
+    }
+  ],
+  "mobileMoneySettings": {
+    "moovNumber": "99668884",
+    "mixxNumber": "90107715",
+    "moovName": "Lemax Group",
+    "mixxName": "Lemax Group",
+    "instructions": "Veuillez effectuer le transfert vers le numéro correspondant et renseigner la référence SMS reçue."
+  }
+}
