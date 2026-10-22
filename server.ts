@@ -1744,7 +1744,7 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
     try {
       execSync('git fetch origin main --depth=1', execOpts);
       execSync('git reset --soft origin/main', execOpts);
-      execSync('git commit -m "Mise à jour complète Digishop par Lemax Group"', execOpts);
+      execSync('git commit -m "Mise à jour complète Digishop par Lemax Group" --allow-empty', execOpts);
       execSync('git push origin main', execOpts);
       pushSucceeded = true;
     } catch {
