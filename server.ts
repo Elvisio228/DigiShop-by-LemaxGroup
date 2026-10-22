@@ -1606,15 +1606,12 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
     let rawUser = String(req.body?.githubUsername || '').trim();
     let rawRepo = String(req.body?.repoName || '').trim();
 
-    if (!rawUser || !rawRepo || !token) {
-      return res.status(400).json({ error: 'Veuillez renseigner votre pseudo GitHub, le nom du dépôt et votre jeton (Token).' });
+    if (!token) {
+      return res.status(400).json({ error: 'Veuillez renseigner votre jeton personnel GitHub (Personal Access Token).' });
     }
 
-    // Auto-detect if user entered email instead of GitHub username
-    if (rawUser.includes('@')) {
-      return res.status(400).json({
-        error: `Vous avez saisi une adresse email ("${rawUser}") comme pseudo. Veuillez entrer votre vrai nom d'utilisateur GitHub (celui qui apparaît dans l'URL de votre profil GitHub, ex: "elvisio228" ou "lemaxshop"), et non pas votre email.`
-      });
+    if (!rawRepo) {
+      return res.status(400).json({ error: 'Veuillez renseigner le nom du dépôt GitHub.' });
     }
 
     // Auto-detect if user pasted a full GitHub URL in repo or username field
@@ -1628,14 +1625,84 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
       if (parts[1]) rawRepo = parts[1].replace('.git', '');
     }
 
-    const cleanUser = rawUser.replace(/[^a-zA-Z0-9_-]/g, '');
+    // 0. Auto-resolve exact GitHub username from token via GitHub API
+    let verifiedGithubLogin = '';
+    try {
+      const ghUserRes = await fetch('https://api.github.com/user', {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Digishop-Auto-Export'
+        }
+      });
+      if (ghUserRes.ok) {
+        const ghUserData = await ghUserRes.json() as any;
+        if (ghUserData && ghUserData.login) {
+          verifiedGithubLogin = ghUserData.login;
+          console.log(`[GitHub Export] Authentifié avec succès en tant que : ${verifiedGithubLogin}`);
+        }
+      } else if (ghUserRes.status === 401) {
+        return res.status(401).json({
+          error: 'Authentification GitHub échouée (Erreur 401) : Votre jeton personnel (Token) est invalide, a expiré ou ne dispose pas des droits requis. Veuillez générer un nouveau token Classic sur github.com/settings/tokens avec la case "repo" cochée.'
+        });
+      }
+    } catch (apiErr) {
+      console.warn('[GitHub Export] User API check warning:', apiErr);
+    }
+
+    // If verified username was found from token, use it if user entered email or left empty
+    if (verifiedGithubLogin) {
+      if (!rawUser || rawUser.includes('@') || rawUser.toLowerCase() === verifiedGithubLogin.toLowerCase()) {
+        rawUser = verifiedGithubLogin;
+      }
+    } else if (rawUser.includes('@')) {
+      return res.status(400).json({
+        error: `Vous avez saisi une adresse email ("${rawUser}") comme pseudo. Veuillez entrer votre vrai nom d'utilisateur GitHub (ex: "${rawUser.split('@')[0]}").`
+      });
+    }
+
+    const cleanUser = (rawUser || verifiedGithubLogin).replace(/[^a-zA-Z0-9_-]/g, '');
     const cleanRepo = rawRepo.replace(/[^a-zA-Z0-9_.-]/g, '');
 
     if (!cleanUser || !cleanRepo) {
       return res.status(400).json({ error: 'Pseudo GitHub ou nom de dépôt invalide après nettoyage.' });
     }
 
-    // 1. Pack full project into zip
+    // 1. Verify or automatically create repository if it does not exist
+    try {
+      const repoCheck = await fetch(`https://api.github.com/repos/${cleanUser}/${cleanRepo}`, {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'User-Agent': 'Digishop-Auto-Export'
+        }
+      });
+      if (repoCheck.status === 404) {
+        console.log(`[GitHub Export] Le dépôt ${cleanUser}/${cleanRepo} n'existe pas encore. Création automatique...`);
+        const createRes = await fetch('https://api.github.com/user/repos', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+            'Content-Type': 'application/json',
+            'User-Agent': 'Digishop-Auto-Export'
+          },
+          body: JSON.stringify({
+            name: cleanRepo,
+            private: false,
+            auto_init: false,
+            description: 'Boutique en ligne DigiShop by Lemax Group'
+          })
+        });
+        if (createRes.ok) {
+          console.log(`[GitHub Export] Dépôt ${cleanUser}/${cleanRepo} créé avec succès sur GitHub.`);
+        }
+      }
+    } catch (createErr) {
+      console.warn('[GitHub Export] Erreur lors de la vérification/création du dépôt:', createErr);
+    }
+
+    // 2. Pack full project into zip
     const scriptPath = path.resolve(process.cwd(), 'scripts', 'export_zip.py');
     execSync(`python3 "${scriptPath}"`);
 
@@ -1644,12 +1711,18 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
       return res.status(500).json({ error: 'Impossible de préparer l\'archive du projet.' });
     }
 
-    // 2. Unzip into temporary working dir
+    // 3. Unzip into temporary working dir
     const tempDir = path.resolve('/tmp', `gh_export_${Date.now()}`);
     fs.mkdirSync(tempDir, { recursive: true });
     execSync(`unzip -q "${zipPath}" -d "${tempDir}"`);
 
-    // 3. Initialize git and commit full tree
+    // Ensure .github folder is completely removed to avoid workflow scope requirement
+    const tempGithub = path.join(tempDir, '.github');
+    if (fs.existsSync(tempGithub)) {
+      fs.rmSync(tempGithub, { recursive: true, force: true });
+    }
+
+    // 4. Initialize git and commit full tree
     const execOpts = { 
       cwd: tempDir, 
       stdio: 'pipe' as const,
@@ -1666,34 +1739,41 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
     execSync('git commit -m "Mise à jour complète Digishop par Lemax Group"', execOpts);
     execSync('git branch -M main', execOpts);
 
-    // 4. Push directly to user repository with encoded credentials
-    const safeUser = encodeURIComponent(cleanUser);
+    // 5. Push directly to user repository with x-access-token for universal PAT support
     const safeToken = encodeURIComponent(token);
-    const remoteUrl = `https://${safeUser}:${safeToken}@github.com/${cleanUser}/${cleanRepo}.git`;
+    const remoteUrl = `https://x-access-token:${safeToken}@github.com/${cleanUser}/${cleanRepo}.git`;
     
     execSync(`git remote add origin "${remoteUrl}"`, execOpts);
 
-    let pushedWithWorkflows = true;
+    // Smart push: Try fast-forward on existing repository first (avoids protected branch force-push error)
+    let pushSucceeded = false;
     try {
-      execSync('git push -u origin main --force', execOpts);
-    } catch (pushErr: any) {
-      const pushErrMsg = (pushErr.stderr ? pushErr.stderr.toString() : pushErr.message || '');
-      if (pushErrMsg.includes('workflow') || pushErrMsg.includes('étendue \'workflow\'')) {
-        console.warn('[Export GitHub] Token lacks "workflow" scope. Retrying push without .github folder...');
-        pushedWithWorkflows = false;
+      execSync('git fetch origin main --depth=1', execOpts);
+      execSync('git reset --soft origin/main', execOpts);
+      execSync('git commit -m "Mise à jour complète Digishop par Lemax Group"', execOpts);
+      execSync('git push origin main', execOpts);
+      pushSucceeded = true;
+    } catch {
+      // Fast-forward not possible or new repo, try direct force push
+    }
+
+    if (!pushSucceeded) {
+      try {
+        execSync('git push -u origin main --force', execOpts);
+        pushSucceeded = true;
+      } catch (pushErr: any) {
+        // Try master branch as fallback in case remote uses master
         try {
-          execSync('git rm -rf .github', execOpts);
-          execSync('git commit -m "Mise à jour complète Digishop par Lemax Group (code complet)"', execOpts);
-          execSync('git push -u origin main --force', execOpts);
-        } catch (retryErr: any) {
-          throw retryErr;
+          execSync('git branch -M master', execOpts);
+          execSync('git push -u origin master --force', execOpts);
+          pushSucceeded = true;
+        } catch {
+          throw pushErr;
         }
-      } else {
-        throw pushErr;
       }
     }
 
-    // 5. Cleanup temp folder
+    // 6. Cleanup temp folder
     try {
       fs.rmSync(tempDir, { recursive: true, force: true });
     } catch {}
@@ -1701,9 +1781,7 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
     return res.json({
       success: true,
       repoUrl: `https://github.com/${cleanUser}/${cleanRepo}`,
-      message: pushedWithWorkflows
-        ? `Félicitations ! L'intégralité du projet et le workflow GitHub Actions ont été envoyés avec succès sur GitHub (${cleanUser}/${cleanRepo}) !`
-        : `Félicitations ! L'intégralité de votre boutique (src, data, images, configuration) a été envoyée avec succès sur GitHub (${cleanUser}/${cleanRepo}) !`
+      message: `Félicitations ! L'intégralité de votre boutique (code, fichiers, images, catalogue et configurations) a été mise à jour avec succès sur votre GitHub (${cleanUser}/${cleanRepo}) !`
     });
   } catch (err: any) {
     console.error('[Export GitHub] Erreur:', err);
@@ -1714,9 +1792,13 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
 
     let userFriendlyError = errMsg;
     if (errMsg.includes('Repository not found')) {
-      userFriendlyError = `Le dépôt est introuvable sur GitHub. Vérifiez que vous avez bien créé un dépôt vide avec ce nom sur votre compte GitHub, et que votre Token a bien la case "repo" cochée.`;
+      userFriendlyError = `Le dépôt est introuvable sur GitHub. Assurez-vous d'avoir saisi le bon nom de dépôt ou vérifiez que votre Token a bien la case "repo" cochée.`;
     } else if (errMsg.includes('Authentication failed') || errMsg.includes('Invalid username or token') || errMsg.includes('Bad credentials')) {
       userFriendlyError = `Authentification GitHub échouée : Votre jeton (Token) est invalide, a expiré ou comporte une erreur de frappe. Générez un nouveau token Classic sur github.com/settings/tokens avec la case "repo" cochée.`;
+    } else if (errMsg.includes('GH006') || errMsg.includes('Protected branch') || errMsg.includes('Cannot force-push')) {
+      userFriendlyError = `Mise à jour bloquée par une règle de protection de branche sur GitHub (Settings > Branches). Désactivez temporairement la protection de la branche "main" sur votre dépôt GitHub ou autorisez les modifications.`;
+    } else if (errMsg.includes('GH013') || errMsg.includes('rule violations') || errMsg.includes('PUSH PROTECTION')) {
+      userFriendlyError = `Blocage par une règle de protection GitHub (Push Protection). Vérifiez les alertes de sécurité dans les paramètres de votre dépôt GitHub.`;
     } else if (errMsg.includes('Permission to') || errMsg.includes('denied to')) {
       userFriendlyError = `Accès refusé par GitHub : Votre compte ou votre token n'a pas les droits d'écriture sur ce dépôt.`;
     }

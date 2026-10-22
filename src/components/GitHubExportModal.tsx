@@ -47,8 +47,8 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({ isOpen, on
     const cleanRepo = repoName.trim();
     const cleanTok = token.trim();
 
-    if (!cleanUser || !cleanRepo || !cleanTok) {
-      setError('Veuillez remplir tous les champs : pseudo GitHub, nom du dépôt et votre jeton (token).');
+    if (!cleanRepo || !cleanTok) {
+      setError('Veuillez renseigner au moins le nom du dépôt et votre jeton GitHub (Token).');
       return;
     }
 
@@ -180,49 +180,65 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({ isOpen, on
 
             {/* Field 1: GitHub Username */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <User className="w-3.5 h-3.5 text-slate-400" />
-                <span>1. Votre pseudo GitHub</span>
+              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <User className="w-3.5 h-3.5 text-slate-400" />
+                  <span>1. Votre pseudo GitHub</span>
+                </span>
+                <span className="text-[10px] text-sky-600 dark:text-sky-400 font-normal">Auto-détection via token</span>
               </label>
               <input
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Ex: jean-dupont"
-                required
+                placeholder="Ex: jean-dupont (ou votre email)"
                 disabled={loading}
                 className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-50"
               />
               <p className="text-[11px] text-slate-400">
-                Votre identifiant ou nom d'utilisateur sur github.com
+                Votre nom d'utilisateur GitHub. Si vous entrez votre email, votre identifiant sera automatiquement résolu.
               </p>
             </div>
 
             {/* Field 2: Repository Name */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <GitBranch className="w-3.5 h-3.5 text-slate-400" />
-                <span>2. Nom du dépôt GitHub (Repo)</span>
+              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <GitBranch className="w-3.5 h-3.5 text-slate-400" />
+                  <span>2. Nom du dépôt GitHub (Repo)</span>
+                </span>
+                <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-normal">Créé auto si inexistant</span>
               </label>
               <input
                 type="text"
                 value={repoName}
                 onChange={(e) => setRepoName(e.target.value)}
-                placeholder="Ex: ma-boutique-digishop"
+                placeholder="Ex: digishop-boutique"
                 required
                 disabled={loading}
                 className="w-full px-3 py-2 text-xs bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-50"
               />
               <p className="text-[11px] text-slate-400">
-                Le nom exact du nouveau dépôt créé sur votre compte GitHub (laissé vide).
+                Le nom du dépôt sur votre compte GitHub. S'il n'existe pas encore, il sera créé automatiquement !
               </p>
             </div>
 
             {/* Field 3: Personal Access Token */}
             <div className="space-y-1">
-              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
-                <Key className="w-3.5 h-3.5 text-slate-400" />
-                <span>3. Votre jeton personnel (Token GitHub)</span>
+              <label className="text-xs font-semibold text-slate-800 dark:text-slate-200 flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Key className="w-3.5 h-3.5 text-slate-400" />
+                  <span>3. Votre jeton personnel (Token GitHub)</span>
+                </span>
+                <a
+                  href="https://github.com/settings/tokens/new?scopes=repo&description=Digishop+Export"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-0.5"
+                >
+                  <span>Créer un token en 1 clic</span>
+                  <ExternalLink className="w-2.5 h-2.5" />
+                </a>
               </label>
               <input
                 type="password"
@@ -234,7 +250,7 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({ isOpen, on
                 className="w-full px-3 py-2 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-50"
               />
               <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                💡 <strong>Rappel pour le jeton :</strong> Sur GitHub (Settings &gt; Developer Settings &gt; Personal access tokens &gt; Tokens classic), vous avez bien coché la case <strong>« repo »</strong> (ou <strong>« dépôt »</strong> en français). C'est ce qui autorise l'envoi de votre code !
+                💡 <strong>Rappel pour le jeton :</strong> Le jeton doit avoir la permission <strong>« repo »</strong> cochée. Le système effectue une mise à jour intelligente même sur les dépôts existants.
               </div>
             </div>
 
