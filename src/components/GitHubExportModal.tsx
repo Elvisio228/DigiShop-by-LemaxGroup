@@ -231,12 +231,12 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({ isOpen, on
                   <span>3. Votre jeton personnel (Token GitHub)</span>
                 </span>
                 <a
-                  href="https://github.com/settings/tokens/new?scopes=repo&description=Digishop+Export"
+                  href="https://github.com/settings/tokens/new?scopes=repo,workflow&description=Digishop+Export"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-[10px] text-sky-600 dark:text-sky-400 hover:underline flex items-center gap-0.5"
                 >
-                  <span>Créer un token en 1 clic</span>
+                  <span>Créer un token en 1 clic (repo + workflow)</span>
                   <ExternalLink className="w-2.5 h-2.5" />
                 </a>
               </label>
@@ -250,7 +250,7 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({ isOpen, on
                 className="w-full px-3 py-2 text-xs font-mono bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-slate-900 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-sky-500 disabled:opacity-50"
               />
               <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
-                💡 <strong>Rappel pour le jeton :</strong> Le jeton doit avoir la permission <strong>« repo »</strong> cochée. Le système effectue une mise à jour intelligente même sur les dépôts existants.
+                💡 <strong>Rappel pour GitHub Actions :</strong> Cochez bien <strong>« repo »</strong> ET <strong>« workflow »</strong>. C'est ce qui permet aux fichiers <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">.github/workflows</code> d'être mis à jour pour lancer automatiquement vos builds dans l'onglet <strong>Action</strong> sur GitHub !
               </div>
             </div>
 

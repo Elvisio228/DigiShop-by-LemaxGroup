@@ -6,7 +6,7 @@ def create_project_zip():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     zip_path = os.path.join(base_dir, 'digishop-project.zip')
     
-    exclude_dirs = {'node_modules', '.git', 'dist', '.cache', '__pycache__', '.github'}
+    exclude_dirs = {'node_modules', '.git', 'dist', '.cache', '__pycache__'}
     exclude_files = {'digishop-project.zip'}
     
     with zipfile.ZipFile(zip_path, 'w', zipfile.ZIP_DEFLATED) as zf:

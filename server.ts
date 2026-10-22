@@ -1716,13 +1716,7 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
     fs.mkdirSync(tempDir, { recursive: true });
     execSync(`unzip -q "${zipPath}" -d "${tempDir}"`);
 
-    // Ensure .github folder is completely removed to avoid workflow scope requirement
-    const tempGithub = path.join(tempDir, '.github');
-    if (fs.existsSync(tempGithub)) {
-      fs.rmSync(tempGithub, { recursive: true, force: true });
-    }
-
-    // 4. Initialize git and commit full tree
+    // 4. Initialize git and commit full tree (including .github workflows for GitHub Actions)
     const execOpts = { 
       cwd: tempDir, 
       stdio: 'pipe' as const,
@@ -1793,8 +1787,8 @@ app.post('/api/export-to-github', exportRateLimiter, async (req, res) => {
     let userFriendlyError = errMsg;
     if (errMsg.includes('Repository not found')) {
       userFriendlyError = `Le dépôt est introuvable sur GitHub. Assurez-vous d'avoir saisi le bon nom de dépôt ou vérifiez que votre Token a bien la case "repo" cochée.`;
-    } else if (errMsg.includes('Authentication failed') || errMsg.includes('Invalid username or token') || errMsg.includes('Bad credentials')) {
-      userFriendlyError = `Authentification GitHub échouée : Votre jeton (Token) est invalide, a expiré ou comporte une erreur de frappe. Générez un nouveau token Classic sur github.com/settings/tokens avec la case "repo" cochée.`;
+    } else if (errMsg.includes('workflow') || errMsg.includes('étendue \'workflow\'') || errMsg.includes('workflow scope')) {
+      userFriendlyError = `Votre jeton GitHub (Token) n'a pas la permission "workflow" requise pour pousser les fichiers GitHub Actions et déclencher l'onglet "Action". Veuillez générer un token avec les cases "repo" ET "workflow" cochées : https://github.com/settings/tokens/new?scopes=repo,workflow&description=Digishop+Export`;
     } else if (errMsg.includes('GH006') || errMsg.includes('Protected branch') || errMsg.includes('Cannot force-push')) {
       userFriendlyError = `Mise à jour bloquée par une règle de protection de branche sur GitHub (Settings > Branches). Désactivez temporairement la protection de la branche "main" sur votre dépôt GitHub ou autorisez les modifications.`;
     } else if (errMsg.includes('GH013') || errMsg.includes('rule violations') || errMsg.includes('PUSH PROTECTION')) {
@@ -1851,8 +1845,8 @@ app.get('/export-github', (_req, res) => {
       <div class="flex gap-2.5 items-start">
         <span class="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center shrink-0 font-bold text-[10px]">2</span>
         <div>
-          <span>Générez un Token d'accès (cochez la case <b>repo</b>) :</span>
-          <a href="https://github.com/settings/tokens/new?description=Digishop_Export&scopes=repo" target="_blank" class="block font-semibold text-indigo-400 underline mt-0.5">Créer mon jeton GitHub (Lien direct)</a>
+          <span>Générez un Token d'accès (cochez les cases <b>repo</b> et <b>workflow</b>) :</span>
+          <a href="https://github.com/settings/tokens/new?description=Digishop_Export&scopes=repo,workflow" target="_blank" class="block font-semibold text-indigo-400 underline mt-0.5">Créer mon jeton GitHub (Lien direct pré-rempli)</a>
         </div>
       </div>
       <div class="flex gap-2.5 items-start">
