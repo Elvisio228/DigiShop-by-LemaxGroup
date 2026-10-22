@@ -1,0 +1,15 @@
+{
+  "mode": "test",
+  "test": {
+    "masterKey": "",
+    "publicKey": "",
+    "privateKey": "",
+    "token": ""
+  },
+  "live": {
+    "masterKey": "",
+    "publicKey": "",
+    "privateKey": "",
+    "token": ""
+  }
+}

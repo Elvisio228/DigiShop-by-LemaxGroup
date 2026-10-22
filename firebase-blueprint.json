@@ -1,0 +1,160 @@
+{
+  "entities": {
+    "Product": {
+      "title": "Product",
+      "description": "A downloadable digital product sold on Digishop.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "slug": { "type": "string" },
+        "title": { "type": "string", "maxLength": 200 },
+        "shortDescription": { "type": "string", "maxLength": 500 },
+        "fullDescription": { "type": "string", "maxLength": 5000 },
+        "price": { "type": "number" },
+        "originalPrice": { "type": "number" },
+        "category": { "type": "string" },
+        "categoryLabel": { "type": "string" },
+        "image": { "type": "string" },
+        "tags": { "type": "array" },
+        "downloadsCount": { "type": "number" },
+        "rating": { "type": "number" },
+        "reviewsCount": { "type": "number" },
+        "isNew": { "type": "boolean" },
+        "isPromo": { "type": "boolean" },
+        "isFeatured": { "type": "boolean" },
+        "isRecommended": { "type": "boolean" },
+        "status": { "type": "string", "enum": ["published", "draft"] },
+        "licenseType": { "type": "string" },
+        "fileDetails": { "type": "object" },
+        "features": { "type": "array" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "slug", "title", "price", "category", "status"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "A customer order for digital downloads.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "orderNumber": { "type": "string" },
+        "userId": { "type": "string" },
+        "customerName": { "type": "string", "maxLength": 150 },
+        "customerEmail": { "type": "string", "format": "email" },
+        "customerPhone": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "couponCode": { "type": "string" },
+        "paymentMethod": { "type": "string", "enum": ["paypal", "card", "paydunya", "moov", "mixx"] },
+        "paymentStatus": { "type": "string", "enum": ["pending", "pending_payment", "paid", "failed", "cancelled", "refunded"] },
+        "paymentDetails": { "type": "object" },
+        "downloadToken": { "type": "string" },
+        "downloadExpiresAt": { "type": "string" },
+        "downloadCount": { "type": "number" },
+        "maxDownloads": { "type": "number" },
+        "createdAt": { "type": "string" },
+        "verifiedAt": { "type": "string" },
+        "verifiedBy": { "type": "string" }
+      },
+      "required": ["id", "orderNumber", "customerName", "customerEmail", "items", "totalAmount", "paymentMethod", "paymentStatus"]
+    },
+    "User": {
+      "title": "User",
+      "description": "User account and profile information.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string", "maxLength": 150 },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["admin", "customer"] },
+        "phone": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "ordersCount": { "type": "number" },
+        "totalSpent": { "type": "number" }
+      },
+      "required": ["id", "name", "email", "role"]
+    },
+    "Coupon": {
+      "title": "Coupon",
+      "description": "Discount coupon for checkout.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "code": { "type": "string" },
+        "discountType": { "type": "string", "enum": ["percentage", "fixed"] },
+        "discountValue": { "type": "number" },
+        "minOrderValue": { "type": "number" },
+        "maxUses": { "type": "number" },
+        "currentUses": { "type": "number" },
+        "expiresAt": { "type": "string" },
+        "isActive": { "type": "boolean" }
+      },
+      "required": ["id", "code", "discountType", "discountValue", "isActive"]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Product review submitted by customer.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "productTitle": { "type": "string" },
+        "userId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string", "maxLength": 1000 },
+        "isVerifiedPurchase": { "type": "boolean" },
+        "isApproved": { "type": "boolean" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "productId", "userName", "rating", "comment"]
+    },
+    "Advertisement": {
+      "title": "Advertisement",
+      "description": "Promotional banner slot.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "position": { "type": "string", "enum": ["home_middle", "catalog_sidebar"] },
+        "badge": { "type": "string" },
+        "heading": { "type": "string" },
+        "subtext": { "type": "string" },
+        "ctaText": { "type": "string" },
+        "ctaLink": { "type": "string" },
+        "bgColor": { "type": "string" },
+        "isEnabled": { "type": "boolean" }
+      },
+      "required": ["id", "title", "position", "heading", "isEnabled"]
+    }
+  },
+  "firestore": {
+    "/products/{productId}": {
+      "schema": "Product",
+      "description": "Collection of digital products sold on the marketplace."
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Customer purchase orders and download authorizations."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Registered customer and administrator accounts."
+    },
+    "/coupons/{couponId}": {
+      "schema": "Coupon",
+      "description": "Promotional discount codes managed by admin."
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "Customer reviews and product evaluations."
+    },
+    "/advertisements/{adId}": {
+      "schema": "Advertisement",
+      "description": "Configurable advertising slots on the storefront."
+    }
+  }
+}
