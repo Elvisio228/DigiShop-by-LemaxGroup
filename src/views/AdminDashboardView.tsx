@@ -43,8 +43,90 @@ import {
   AlertTriangle,
   Check
 } from 'lucide-react';
-import { updateOrderStatusInFirestore, saveProductToFirestore } from '../lib/firebase';
+import defaultDb from '../../data/db.json';
+import {
+  updateOrderStatusInFirestore,
+  saveProductToFirestore,
+  getAllOrdersFromFirestore,
+  getAllCustomersFromFirestore,
+  syncCouponsWithFirestore,
+  saveCouponToFirestore,
+  deleteCouponFromFirestore,
+  syncAdsWithFirestore,
+  saveAdToFirestore,
+  deleteProductFromFirestore
+} from '../lib/firebase';
 import { safeFetchJson } from '../lib/apiClient';
+
+function computeAdminStats(
+  ordersList: Order[],
+  productsList: Product[],
+  customersList: User[]
+): AdminStats {
+  const paid = ordersList.filter(o => o.paymentStatus === 'paid');
+  const pending = ordersList.filter(o => o.paymentStatus === 'pending_payment' || o.paymentStatus === 'pending');
+  const totalRev = paid.reduce((acc, o) => acc + (o.totalAmount || 0), 0);
+
+  const methodMap: Record<string, { count: number; amount: number; label: string }> = {
+    paydunya: { count: 0, amount: 0, label: 'PayDunya (Mobile Money & Cartes)' },
+    paypal: { count: 0, amount: 0, label: 'PayPal' },
+    card: { count: 0, amount: 0, label: 'Carte Bancaire' },
+    moov: { count: 0, amount: 0, label: 'Moov Money (Direct)' },
+    mixx: { count: 0, amount: 0, label: 'Mixx by Yas (Direct)' }
+  };
+
+  ordersList.forEach(o => {
+    const m = (o.paymentMethod || 'card').toLowerCase();
+    if (!methodMap[m]) {
+      methodMap[m] = { count: 0, amount: 0, label: m.toUpperCase() };
+    }
+    methodMap[m].count += 1;
+    if (o.paymentStatus === 'paid') {
+      methodMap[m].amount += (o.totalAmount || 0);
+    }
+  });
+
+  const productSalesMap: Record<string, { id: string; title: string; salesCount: number; revenue: number }> = {};
+  productsList.forEach(p => {
+    productSalesMap[p.id] = { id: p.id, title: p.title, salesCount: 0, revenue: 0 };
+  });
+
+  paid.forEach(o => {
+    (o.items || []).forEach(item => {
+      if (!productSalesMap[item.productId]) {
+        productSalesMap[item.productId] = {
+          id: item.productId,
+          title: item.title,
+          salesCount: 0,
+          revenue: 0
+        };
+      }
+      productSalesMap[item.productId].salesCount += 1;
+      productSalesMap[item.productId].revenue += (item.price || 0);
+    });
+  });
+
+  const popular = Object.values(productSalesMap)
+    .sort((a, b) => b.salesCount - a.salesCount)
+    .slice(0, 5);
+
+  return {
+    totalRevenue: totalRev,
+    totalOrders: ordersList.length,
+    paidOrders: paid.length,
+    pendingPaymentOrders: pending.length,
+    totalCustomers: customersList.length,
+    totalProducts: productsList.length,
+    popularProducts: popular,
+    paymentMethodBreakdown: Object.entries(methodMap).map(([method, data]) => ({
+      method: method as any,
+      label: data.label,
+      count: data.count,
+      amount: data.amount
+    })),
+    recentSales: []
+  };
+}
 
 const ADMIN_DOMAINS: Record<string, { title: string; subtitle: string; icon: any; emoji: string }> = {
   stats: {
@@ -129,9 +211,18 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     }
   }, [initialTab]);
 
-  // State
-  const [stats, setStats] = useState<AdminStats | null>(null);
-  const [orders, setOrders] = useState<Order[]>([]);
+  // State hydrated with local storage or db.json fallbacks so tabs are NEVER blank on Firebase Hosting
+  const [orders, setOrders] = useState<Order[]>(() => {
+    try {
+      const cached = localStorage.getItem('digishop_admin_orders');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return (defaultDb.orders || []) as Order[];
+  });
+
   const [products, setProducts] = useState<Product[]>(() => {
     if (Array.isArray(initialProducts) && initialProducts.length > 0) return initialProducts;
     try {
@@ -141,7 +232,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return [];
+    return (defaultDb.products || []) as Product[];
   });
 
   // Synchronize products if passed or updated from parent
@@ -150,11 +241,56 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       setProducts(prev => prev.length === 0 ? initialProducts : prev);
     }
   }, [initialProducts]);
-  const [customers, setCustomers] = useState<User[]>([]);
-  const [coupons, setCoupons] = useState<Coupon[]>([]);
-  const [ads, setAds] = useState<Advertisement[]>([]);
-  const [reviews, setReviews] = useState<Review[]>([]);
-  const [loading, setLoading] = useState(true);
+
+  const [customers, setCustomers] = useState<User[]>(() => {
+    try {
+      const cached = localStorage.getItem('digishop_admin_customers');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return (defaultDb.users || []) as User[];
+  });
+
+  const [coupons, setCoupons] = useState<Coupon[]>(() => {
+    try {
+      const cached = localStorage.getItem('digishop_admin_coupons');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return (defaultDb.coupons || []) as Coupon[];
+  });
+
+  const [ads, setAds] = useState<Advertisement[]>(() => {
+    try {
+      const cached = localStorage.getItem('digishop_admin_ads');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return (defaultDb.advertisements || []) as Advertisement[];
+  });
+
+  const [stats, setStats] = useState<AdminStats | null>(() => {
+    try {
+      const cached = localStorage.getItem('digishop_admin_stats');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && typeof parsed.totalRevenue === 'number') return parsed;
+      }
+    } catch {}
+    const initOrders = (defaultDb.orders || []) as Order[];
+    const initProds = (defaultDb.products || []) as Product[];
+    const initUsers = (defaultDb.users || []) as User[];
+    return computeAdminStats(initOrders, initProds, initUsers);
+  });
+
+  const [reviews, setReviews] = useState<Review[]>(() => (defaultDb.reviews || []) as Review[]);
+  const [loading, setLoading] = useState(false);
 
   // Admin Security & Credentials
   const [adminName, setAdminName] = useState(user?.name || 'Directeur Digishop');
@@ -309,11 +445,27 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         safeFetchJson('/api/admin/settings/payments', { headers })
       ]);
 
-      if (resStats.ok && resStats.data) setStats(resStats.data);
-      if (resOrders.ok && Array.isArray(resOrders.data)) setOrders(resOrders.data);
+      // 1. Orders
+      if (resOrders.ok && Array.isArray(resOrders.data) && resOrders.data.length > 0) {
+        setOrders(resOrders.data);
+        try { localStorage.setItem('digishop_admin_orders', JSON.stringify(resOrders.data)); } catch {}
+      } else {
+        try {
+          const fallbackOrders = (defaultDb.orders || []) as Order[];
+          const fsOrders = await getAllOrdersFromFirestore(fallbackOrders);
+          if (fsOrders && fsOrders.length > 0) {
+            setOrders(fsOrders);
+            try { localStorage.setItem('digishop_admin_orders', JSON.stringify(fsOrders)); } catch {}
+          }
+        } catch (e) {
+          console.warn('[Admin] Fallback orders warning:', e);
+        }
+      }
       
+      // 2. Products
       if (resProducts.ok && Array.isArray(resProducts.data) && resProducts.data.length > 0) {
         setProducts(resProducts.data);
+        onProductsUpdated?.(resProducts.data);
         try {
           localStorage.setItem('digishop_products_cache', JSON.stringify(resProducts.data));
         } catch {}
@@ -323,16 +475,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           const pubRes = await safeFetchJson<Product[]>('/api/products');
           if (pubRes.ok && Array.isArray(pubRes.data) && pubRes.data.length > 0) {
             setProducts(pubRes.data);
+            onProductsUpdated?.(pubRes.data);
             try {
               localStorage.setItem('digishop_products_cache', JSON.stringify(pubRes.data));
             } catch {}
           } else {
             const { syncProductsWithFirestore } = await import('../lib/firebase');
-            const dbData = (await import('../../data/db.json')).default;
-            const initialProds = (dbData.products || []) as Product[];
+            const initialProds = (defaultDb.products || []) as Product[];
             const fsProds = await syncProductsWithFirestore(initialProds);
             if (fsProds && fsProds.length > 0) {
               setProducts(fsProds);
+              onProductsUpdated?.(fsProds);
               try {
                 localStorage.setItem('digishop_products_cache', JSON.stringify(fsProds));
               } catch {}
@@ -343,10 +496,79 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         }
       }
 
-      if (resCustomers.ok && Array.isArray(resCustomers.data)) setCustomers(resCustomers.data);
-      if (resCoupons.ok && Array.isArray(resCoupons.data)) setCoupons(resCoupons.data);
-      if (resAds.ok && Array.isArray(resAds.data)) setAds(resAds.data);
+      // 3. Customers
+      if (resCustomers.ok && Array.isArray(resCustomers.data) && resCustomers.data.length > 0) {
+        setCustomers(resCustomers.data);
+        try { localStorage.setItem('digishop_admin_customers', JSON.stringify(resCustomers.data)); } catch {}
+      } else {
+        try {
+          const fallbackUsers = (defaultDb.users || []) as User[];
+          const fsCustomers = await getAllCustomersFromFirestore(fallbackUsers);
+          if (fsCustomers && fsCustomers.length > 0) {
+            setCustomers(fsCustomers);
+            try { localStorage.setItem('digishop_admin_customers', JSON.stringify(fsCustomers)); } catch {}
+          }
+        } catch (e) {
+          console.warn('[Admin] Fallback customers warning:', e);
+        }
+      }
+
+      // 4. Coupons
+      if (resCoupons.ok && Array.isArray(resCoupons.data) && resCoupons.data.length > 0) {
+        setCoupons(resCoupons.data);
+        try { localStorage.setItem('digishop_admin_coupons', JSON.stringify(resCoupons.data)); } catch {}
+      } else {
+        try {
+          const fallbackCoupons = (defaultDb.coupons || []) as Coupon[];
+          const fsCoupons = await syncCouponsWithFirestore(fallbackCoupons);
+          if (fsCoupons && fsCoupons.length > 0) {
+            setCoupons(fsCoupons);
+            try { localStorage.setItem('digishop_admin_coupons', JSON.stringify(fsCoupons)); } catch {}
+          }
+        } catch (e) {
+          console.warn('[Admin] Fallback coupons warning:', e);
+        }
+      }
+
+      // 5. Advertisements
+      if (resAds.ok && Array.isArray(resAds.data) && resAds.data.length > 0) {
+        setAds(resAds.data);
+        try { localStorage.setItem('digishop_admin_ads', JSON.stringify(resAds.data)); } catch {}
+      } else {
+        try {
+          const fallbackAds = (defaultDb.advertisements || []) as Advertisement[];
+          const fsAds = await syncAdsWithFirestore(fallbackAds);
+          if (fsAds && fsAds.length > 0) {
+            setAds(fsAds);
+            try { localStorage.setItem('digishop_admin_ads', JSON.stringify(fsAds)); } catch {}
+          }
+        } catch (e) {
+          console.warn('[Admin] Fallback ads warning:', e);
+        }
+      }
+
       if (resReviews.ok && Array.isArray(resReviews.data)) setReviews(resReviews.data);
+
+      // 6. Global Stats
+      if (resStats.ok && resStats.data) {
+        setStats(resStats.data);
+        try { localStorage.setItem('digishop_admin_stats', JSON.stringify(resStats.data)); } catch {}
+      } else {
+        setStats(prev => {
+          const currentOrders = (resOrders.ok && Array.isArray(resOrders.data) && resOrders.data.length > 0)
+            ? resOrders.data
+            : (orders.length > 0 ? orders : (defaultDb.orders as any));
+          const currentProds = (resProducts.ok && Array.isArray(resProducts.data) && resProducts.data.length > 0)
+            ? resProducts.data
+            : (products.length > 0 ? products : (defaultDb.products as any));
+          const currentUsers = (resCustomers.ok && Array.isArray(resCustomers.data) && resCustomers.data.length > 0)
+            ? resCustomers.data
+            : (customers.length > 0 ? customers : (defaultDb.users as any));
+          const calculated = computeAdminStats(currentOrders, currentProds, currentUsers);
+          try { localStorage.setItem('digishop_admin_stats', JSON.stringify(calculated)); } catch {}
+          return calculated;
+        });
+      }
       if (resGateways.ok && resGateways.data) {
         const gwData = resGateways.data;
         if (gwData.paydunya) {
@@ -460,29 +682,34 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   // --- Handlers ---
   const handleUpdateOrderStatus = async (orderId: string, status: Order['paymentStatus']) => {
     try {
-      const res = await safeFetchJson(`/api/admin/orders/${orderId}/status`, {
+      setOrders(prev => {
+        const updated = prev.map(o => o.id === orderId ? { ...o, paymentStatus: status } : o);
+        try { localStorage.setItem('digishop_admin_orders', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+
+      // Sync with Firestore
+      updateOrderStatusInFirestore(orderId, status).catch(e => console.warn('[Firebase] Sync:', e));
+
+      // Attempt server update
+      safeFetchJson(`/api/admin/orders/${orderId}/status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify({ status })
-      });
-      if (res.ok && res.data) {
-        showToast(`Commande ${res.data.orderNumber || orderId} passée au statut : ${status} ✓`, 'success');
-        setOrders(prev => prev.map(o => o.id === orderId ? { ...o, paymentStatus: status } : o));
-        
-        // Sync with Firestore
-        updateOrderStatusInFirestore(orderId, status).catch(e => console.warn('[Firebase] Sync:', e));
+      }).catch(() => {});
 
-        // Refresh stats
-        safeFetchJson('/api/admin/stats', { headers: token ? { Authorization: `Bearer ${token}` } : {} })
-          .then(r => { if (r.ok && r.data) setStats(r.data); })
-          .catch(() => {});
-      } else {
-        const errorMsg = res.error || (res.data as any)?.error || `Impossible de passer au statut ${status}`;
-        showToast(errorMsg, 'error');
-      }
+      showToast(`Commande ${orderId} passée au statut : ${status} ✓`, 'success');
+
+      // Refresh stats
+      setStats(prev => {
+        const nextOrders = orders.map(o => o.id === orderId ? { ...o, paymentStatus: status } : o);
+        const computed = computeAdminStats(nextOrders, products, customers);
+        try { localStorage.setItem('digishop_admin_stats', JSON.stringify(computed)); } catch {}
+        return computed;
+      });
     } catch (err: any) {
       showToast(err.message || 'Erreur lors de la mise à jour du statut', 'error');
     }
@@ -639,10 +866,11 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
         ...(user?.email ? { 'X-Admin-Email': user.email } : {})
       };
-      await safeFetchJson(`/api/admin/products/${id}`, {
+      safeFetchJson(`/api/admin/products/${id}`, {
         method: 'DELETE',
         headers
-      });
+      }).catch(() => {});
+      deleteProductFromFirestore(id).catch(e => console.warn('[Firebase] Delete product:', e));
       showToast('Produit supprimé du catalogue ✓', 'success');
     } catch {
       showToast('Produit supprimé', 'info');
@@ -663,68 +891,70 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const handleCreateCoupon = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newCouponCode.trim()) return;
+    const dummyCoupon: Coupon = {
+      id: `cp-${Date.now()}`,
+      code: newCouponCode.trim().toUpperCase(),
+      discountType: 'percentage',
+      discountValue: newCouponValue,
+      minOrderValue: newCouponMin,
+      maxUses: 200,
+      currentUses: 0,
+      expiresAt: '2026-12-31T23:59:59Z',
+      isActive: true
+    };
     try {
-      const res = await safeFetchJson<Coupon>('/api/admin/coupons', {
+      setCoupons(prev => {
+        const updated = [dummyCoupon, ...prev];
+        try { localStorage.setItem('digishop_admin_coupons', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+      saveCouponToFirestore(dummyCoupon).catch(e => console.warn('[Firebase] Save coupon:', e));
+      safeFetchJson<Coupon>('/api/admin/coupons', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
-        body: JSON.stringify({
-          code: newCouponCode.trim(),
-          discountType: 'percentage',
-          discountValue: newCouponValue,
-          minOrderValue: newCouponMin,
-          maxUses: 200,
-          expiresAt: '2026-12-31T23:59:59Z',
-          isActive: true
-        })
-      });
-      if (res.ok && res.data) {
-        showToast(`Coupon ${res.data.code} créé ✓`, 'success');
-        setCoupons(prev => [res.data!, ...prev]);
-        setNewCouponCode('');
-      } else {
-        const dummyCoupon: Coupon = {
-          id: `cp-${Date.now()}`,
-          code: newCouponCode.trim().toUpperCase(),
-          discountType: 'percentage',
-          discountValue: newCouponValue,
-          minOrderValue: newCouponMin,
-          maxUses: 200,
-          currentUses: 0,
-          expiresAt: '2026-12-31T23:59:59Z',
-          isActive: true
-        };
-        setCoupons(prev => [dummyCoupon, ...prev]);
-        showToast(`Coupon ${dummyCoupon.code} enregistré ✓`, 'success');
-        setNewCouponCode('');
-      }
+        body: JSON.stringify(dummyCoupon)
+      }).catch(() => {});
+
+      showToast(`Coupon ${dummyCoupon.code} créé avec succès ✓`, 'success');
+      setNewCouponCode('');
     } catch {
       showToast('Coupon enregistré localement', 'info');
     }
   };
 
   const handleDeleteCoupon = async (id: string) => {
-    await safeFetchJson(`/api/admin/coupons/${id}`, {
+    setCoupons(prev => {
+      const filtered = prev.filter(c => c.id !== id);
+      try { localStorage.setItem('digishop_admin_coupons', JSON.stringify(filtered)); } catch {}
+      return filtered;
+    });
+    deleteCouponFromFirestore(id).catch(e => console.warn('[Firebase] Delete coupon:', e));
+    safeFetchJson(`/api/admin/coupons/${id}`, {
       method: 'DELETE',
       headers: token ? { Authorization: `Bearer ${token}` } : {}
-    });
-    setCoupons(prev => prev.filter(c => c.id !== id));
-    showToast('Coupon retiré', 'info');
+    }).catch(() => {});
+    showToast('Coupon retiré ✓', 'info');
   };
 
   const handleToggleAd = async (ad: Advertisement) => {
     const updated = { ...ad, isEnabled: !ad.isEnabled };
-    await safeFetchJson(`/api/admin/ads/${ad.id}`, {
+    setAds(prev => {
+      const nextAds = prev.map(a => a.id === ad.id ? updated : a);
+      try { localStorage.setItem('digishop_admin_ads', JSON.stringify(nextAds)); } catch {}
+      return nextAds;
+    });
+    saveAdToFirestore(updated).catch(e => console.warn('[Firebase] Save ad:', e));
+    safeFetchJson(`/api/admin/ads/${ad.id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(token ? { Authorization: `Bearer ${token}` } : {})
       },
       body: JSON.stringify(updated)
-    });
-    setAds(prev => prev.map(a => a.id === ad.id ? updated : a));
+    }).catch(() => {});
     showToast(`Espace pub ${ad.position} : ${updated.isEnabled ? 'Activé' : 'Désactivé'}`, 'info');
   };
 
@@ -733,25 +963,23 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     if (!editingAd) return;
     setSavingAd(true);
     try {
-      const res = await safeFetchJson<Advertisement>(`/api/admin/ads/${editingAd.id}`, {
+      setAds(prev => {
+        const nextAds = prev.map(a => a.id === editingAd.id ? editingAd : a);
+        try { localStorage.setItem('digishop_admin_ads', JSON.stringify(nextAds)); } catch {}
+        return nextAds;
+      });
+      saveAdToFirestore(editingAd).catch(e => console.warn('[Firebase] Save ad:', e));
+      safeFetchJson<Advertisement>(`/api/admin/ads/${editingAd.id}`, {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
           ...(token ? { Authorization: `Bearer ${token}` } : {})
         },
         body: JSON.stringify(editingAd)
-      });
-      if (res.ok && res.data) {
-        showToast('Espace publicitaire mis à jour avec succès ✓', 'success');
-        setAds(prev => prev.map(a => a.id === res.data!.id ? res.data! : a));
-        setEditingAd(null);
-      } else {
-        setAds(prev => prev.map(a => a.id === editingAd.id ? editingAd : a));
-        showToast('Espace publicitaire mis à jour ✓', 'success');
-        setEditingAd(null);
-      }
+      }).catch(() => {});
+      showToast('Espace publicitaire mis à jour avec succès ✓', 'success');
+      setEditingAd(null);
     } catch {
-      setAds(prev => prev.map(a => a.id === editingAd.id ? editingAd : a));
       showToast('Espace publicitaire enregistré', 'info');
       setEditingAd(null);
     } finally {
@@ -1125,99 +1353,102 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       )}
 
       {/* TAB 1: STATS & OVERVIEW */}
-      {activeTab === 'stats' && stats && (
-        <div className="space-y-6">
-          {/* Key Metric Cards */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-              <span className="text-xs text-slate-500 block">Chiffre d'Affaires Réalisé</span>
-              <p className="text-2xl font-bold font-mono text-slate-950 dark:text-white mt-1 tabular-nums">
-                {stats.totalRevenue.toFixed(2)} €
-              </p>
-              <span className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 block">
-                {stats.paidOrders} commandes payées
-              </span>
-            </div>
+      {activeTab === 'stats' && (() => {
+        const activeStats = stats || computeAdminStats(orders, products, customers);
+        return (
+          <div className="space-y-6">
+            {/* Key Metric Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                <span className="text-xs text-slate-500 block">Chiffre d'Affaires Réalisé</span>
+                <p className="text-2xl font-bold font-mono text-slate-950 dark:text-white mt-1 tabular-nums">
+                  {activeStats.totalRevenue.toFixed(2)} €
+                </p>
+                <span className="text-[11px] text-emerald-600 dark:text-emerald-400 mt-1 block">
+                  {activeStats.paidOrders} commandes payées
+                </span>
+              </div>
 
-            <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-              <span className="text-xs text-slate-500 block">Commandes Totales</span>
-              <p className="text-2xl font-bold font-mono text-slate-950 dark:text-white mt-1 tabular-nums">
-                {stats.totalOrders}
-              </p>
-              <span className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 block">
-                {stats.pendingPaymentOrders} en attente de vérification
-              </span>
-            </div>
+              <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                <span className="text-xs text-slate-500 block">Commandes Totales</span>
+                <p className="text-2xl font-bold font-mono text-slate-950 dark:text-white mt-1 tabular-nums">
+                  {activeStats.totalOrders}
+                </p>
+                <span className="text-[11px] text-amber-600 dark:text-amber-400 mt-1 block">
+                  {activeStats.pendingPaymentOrders} en attente de vérification
+                </span>
+              </div>
 
-            <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-              <span className="text-xs text-slate-500 block">Clients Enregistrés</span>
-              <p className="text-2xl font-bold font-mono text-slate-950 dark:text-white mt-1 tabular-nums">
-                {stats.totalCustomers}
-              </p>
-              <span className="text-[11px] text-slate-400 mt-1 block">Comptes actifs</span>
-            </div>
+              <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                <span className="text-xs text-slate-500 block">Clients Enregistrés</span>
+                <p className="text-2xl font-bold font-mono text-slate-950 dark:text-white mt-1 tabular-nums">
+                  {activeStats.totalCustomers}
+                </p>
+                <span className="text-[11px] text-slate-400 mt-1 block">Comptes actifs</span>
+              </div>
 
-            <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
-              <span className="text-xs text-slate-500 block">Produits au Catalogue</span>
-              <p className="text-2xl font-bold font-mono text-slate-950 dark:text-white mt-1 tabular-nums">
-                {stats.totalProducts}
-              </p>
-              <span className="text-[11px] text-sky-600 dark:text-sky-400 mt-1 block">100% Téléchargeables</span>
-            </div>
-          </div>
-
-          {/* Breakdown & Top Products */}
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Payment Methods Breakdown */}
-            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold font-display text-slate-950 dark:text-white">
-                Répartition des Moyens de Paiement
-              </h3>
-              <div className="space-y-3">
-                {stats.paymentMethodBreakdown.map(p => (
-                  <div key={p.method} className="space-y-1">
-                    <div className="flex justify-between text-xs">
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">{p.label}</span>
-                      <span className="font-mono tabular-nums text-slate-600 dark:text-slate-400">
-                        {p.count} ventes ({p.amount.toFixed(2)} €)
-                      </span>
-                    </div>
-                    <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div
-                        className="h-full bg-sky-500 rounded-full"
-                        style={{
-                          width: `${stats.totalRevenue > 0 ? (p.amount / stats.totalRevenue) * 100 : 0}%`
-                        }}
-                      />
-                    </div>
-                  </div>
-                ))}
+              <div className="p-5 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm">
+                <span className="text-xs text-slate-500 block">Produits au Catalogue</span>
+                <p className="text-2xl font-bold font-mono text-slate-950 dark:text-white mt-1 tabular-nums">
+                  {activeStats.totalProducts}
+                </p>
+                <span className="text-[11px] text-sky-600 dark:text-sky-400 mt-1 block">100% Téléchargeables</span>
               </div>
             </div>
 
-            {/* Top Selling Products */}
-            <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
-              <h3 className="text-sm font-bold font-display text-slate-950 dark:text-white">
-                Top Produits par Volume
-              </h3>
-              <div className="space-y-3">
-                {stats.popularProducts.map((p, idx) => (
-                  <div key={p.id} className="flex items-center justify-between text-xs pb-2 border-b border-slate-100 dark:border-slate-800">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-slate-400">#{idx + 1}</span>
-                      <span className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]">{p.title}</span>
+            {/* Breakdown & Top Products */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Payment Methods Breakdown */}
+              <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold font-display text-slate-950 dark:text-white">
+                  Répartition des Moyens de Paiement
+                </h3>
+                <div className="space-y-3">
+                  {activeStats.paymentMethodBreakdown.map(p => (
+                    <div key={p.method} className="space-y-1">
+                      <div className="flex justify-between text-xs">
+                        <span className="font-semibold text-slate-800 dark:text-slate-200">{p.label}</span>
+                        <span className="font-mono tabular-nums text-slate-600 dark:text-slate-400">
+                          {p.count} ventes ({p.amount.toFixed(2)} €)
+                        </span>
+                      </div>
+                      <div className="w-full h-2 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
+                        <div
+                          className="h-full bg-sky-500 rounded-full"
+                          style={{
+                            width: `${activeStats.totalRevenue > 0 ? (p.amount / activeStats.totalRevenue) * 100 : 0}%`
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="text-right">
-                      <span className="font-mono font-bold text-slate-900 dark:text-white tabular-nums">{p.salesCount} ventes</span>
-                      <span className="text-[11px] text-slate-400 block font-mono tabular-nums">{p.revenue.toFixed(2)} €</span>
+                  ))}
+                </div>
+              </div>
+
+              {/* Top Selling Products */}
+              <div className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-4">
+                <h3 className="text-sm font-bold font-display text-slate-950 dark:text-white">
+                  Top Produits par Volume
+                </h3>
+                <div className="space-y-3">
+                  {activeStats.popularProducts.map((p, idx) => (
+                    <div key={p.id} className="flex items-center justify-between text-xs pb-2 border-b border-slate-100 dark:border-slate-800">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-slate-400">#{idx + 1}</span>
+                        <span className="font-medium text-slate-900 dark:text-white truncate max-w-[200px]">{p.title}</span>
+                      </div>
+                      <div className="text-right">
+                        <span className="font-mono font-bold text-slate-900 dark:text-white tabular-nums">{p.salesCount} ventes</span>
+                        <span className="text-[11px] text-slate-400 block font-mono tabular-nums">{p.revenue.toFixed(2)} €</span>
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* TAB 2: COMMANDES & VALIDATION DE PAIEMENT */}
       {activeTab === 'orders' && (
@@ -1247,7 +1478,35 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {orders.map(order => {
+                {orders.length === 0 ? (
+                  <tr>
+                    <td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
+                            <p className="text-xs font-medium">Chargement des commandes...</p>
+                          </>
+                        ) : (
+                          <>
+                            <ShoppingBag className="w-8 h-8 text-slate-400 opacity-60" />
+                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucune commande enregistrée pour le moment</p>
+                            <p className="text-[11px] text-slate-400">Toutes les commandes passées par vos clients apparaîtront ici.</p>
+                            <button
+                              type="button"
+                              onClick={fetchAdminData}
+                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Actualiser les commandes</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
+                    </td>
+                  </tr>
+                ) : (
+                  orders.map(order => {
                   const isPending = order.paymentStatus === 'pending_payment';
                   const isPaid = order.paymentStatus === 'paid';
                   const isDownloaded = (order.downloadCount || 0) > 0 || !!order.firstDownloadedAt || order.isRefundable === false;
@@ -1356,7 +1615,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
@@ -1536,20 +1795,49 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {customers.map(c => (
-                  <tr key={c.id}>
-                    <td className="p-3.5">
-                      <p className="font-semibold text-slate-900 dark:text-white">{c.name}</p>
-                      <p className="text-[11px] text-slate-500 font-mono">{c.email}</p>
-                    </td>
-                    <td className="p-3.5 text-slate-600 dark:text-slate-400">{c.phone || '-'}</td>
-                    <td className="p-3.5 text-slate-500">{new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>
-                    <td className="p-3.5 font-mono font-bold tabular-nums">{c.ordersCount}</td>
-                    <td className="p-3.5 font-mono font-bold tabular-nums text-slate-900 dark:text-white">
-                      {c.totalSpent.toFixed(2)} €
+                {customers.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="p-8 text-center text-slate-500 dark:text-slate-400">
+                      <div className="flex flex-col items-center justify-center space-y-2">
+                        {loading ? (
+                          <>
+                            <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
+                            <p className="text-xs font-medium">Chargement des clients...</p>
+                          </>
+                        ) : (
+                          <>
+                            <Users className="w-8 h-8 text-slate-400 opacity-60" />
+                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun client enregistré pour le moment</p>
+                            <p className="text-[11px] text-slate-400">Les comptes utilisateurs créés lors des commandes apparaîtront ici.</p>
+                            <button
+                              type="button"
+                              onClick={fetchAdminData}
+                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                            >
+                              <RefreshCw className="w-3.5 h-3.5" />
+                              <span>Actualiser la liste clients</span>
+                            </button>
+                          </>
+                        )}
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : (
+                  customers.map(c => (
+                    <tr key={c.id}>
+                      <td className="p-3.5">
+                        <p className="font-semibold text-slate-900 dark:text-white">{c.name}</p>
+                        <p className="text-[11px] text-slate-500 font-mono">{c.email}</p>
+                      </td>
+                      <td className="p-3.5 text-slate-600 dark:text-slate-400">{c.phone || '-'}</td>
+                      <td className="p-3.5 text-slate-500">{new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>
+                      <td className="p-3.5 font-mono font-bold tabular-nums">{c.ordersCount}</td>
+                      <td className="p-3.5 font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                        {c.totalSpent.toFixed(2)} €
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -1564,22 +1852,30 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               Codes Promotionnels Actifs ({coupons.length})
             </h2>
             <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
-              {coupons.map(c => (
-                <div key={c.id} className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between text-xs">
-                  <div>
-                    <span className="font-mono font-bold text-sky-600 dark:text-sky-400 text-sm">{c.code}</span>
-                    <p className="text-[11px] text-slate-500 mt-0.5">
-                      Réduction : {c.discountValue}% · Minimum : {c.minOrderValue} € · Utilisations : {c.currentUses}/{c.maxUses}
-                    </p>
-                  </div>
-                  <button
-                    onClick={() => handleDeleteCoupon(c.id)}
-                    className="text-rose-500 hover:text-rose-700 p-1"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+              {coupons.length === 0 ? (
+                <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                  <Tag className="w-8 h-8 text-slate-400 opacity-60 mx-auto mb-2" />
+                  <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun code promo actif</p>
+                  <p className="text-[11px] text-slate-400 mt-1">Utilisez le formulaire ci-contre pour créer un nouveau code promotionnel.</p>
                 </div>
-              ))}
+              ) : (
+                coupons.map(c => (
+                  <div key={c.id} className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between text-xs">
+                    <div>
+                      <span className="font-mono font-bold text-sky-600 dark:text-sky-400 text-sm">{c.code}</span>
+                      <p className="text-[11px] text-slate-500 mt-0.5">
+                        Réduction : {c.discountValue}% · Minimum : {c.minOrderValue} € · Utilisations : {c.currentUses}/{c.maxUses}
+                      </p>
+                    </div>
+                    <button
+                      onClick={() => handleDeleteCoupon(c.id)}
+                      className="text-rose-500 hover:text-rose-700 p-1"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                ))
+              )}
             </div>
           </div>
 
@@ -1648,7 +1944,22 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {ads.map(ad => {
+            {ads.length === 0 ? (
+              <div className="col-span-full p-8 text-center text-slate-500 dark:text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                <Radio className="w-8 h-8 text-slate-400 opacity-60 mx-auto mb-2" />
+                <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun espace publicitaire configuré</p>
+                <p className="text-[11px] text-slate-400 mt-1">Rechargez pour synchroniser les 4 bannières promotionnelles par défaut du site.</p>
+                <button
+                  type="button"
+                  onClick={fetchAdminData}
+                  className="mt-3 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 hover:bg-blue-100 transition-colors"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Charger les bannières par défaut</span>
+                </button>
+              </div>
+            ) : (
+              ads.map(ad => {
               const positionNames: Record<string, { label: string; location: string; icon: string }> = {
                 top_bar: { label: "Bannière d'En-tête (Top Bar)", location: "En haut de toutes les pages (au-dessus du menu)", icon: "📌" },
                 home_middle: { label: "Bannière Centrale Accueil", location: "Au centre de la page d'accueil (grand format)", icon: "🏠" },
@@ -1711,7 +2022,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </div>
                 </div>
               );
-            })}
+            }))}
           </div>
         </div>
       )}

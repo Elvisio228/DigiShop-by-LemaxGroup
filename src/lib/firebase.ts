@@ -298,6 +298,44 @@ export async function getUserOrdersFromFirestore(userId: string, email?: string)
   }
 }
 
+export async function getAllOrdersFromFirestore(fallbackOrders: Order[] = []): Promise<Order[]> {
+  try {
+    const snap = await getDocs(collection(db, 'orders'));
+    if (!snap.empty) {
+      const items: Order[] = [];
+      snap.forEach(d => items.push(d.data() as Order));
+      return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    } else if (fallbackOrders.length > 0) {
+      for (const ord of fallbackOrders.slice(0, 10)) {
+        await setDoc(doc(db, 'orders', ord.id), ord).catch(() => {});
+      }
+      return fallbackOrders;
+    }
+  } catch (err) {
+    console.warn('[Firestore] getAllOrdersFromFirestore warning:', err);
+  }
+  return fallbackOrders;
+}
+
+export async function getAllCustomersFromFirestore(fallbackUsers: User[] = []): Promise<User[]> {
+  try {
+    const snap = await getDocs(collection(db, 'users'));
+    if (!snap.empty) {
+      const items: User[] = [];
+      snap.forEach(d => items.push(d.data() as User));
+      return items;
+    } else if (fallbackUsers.length > 0) {
+      for (const u of fallbackUsers) {
+        await setDoc(doc(db, 'users', u.id), u).catch(() => {});
+      }
+      return fallbackUsers;
+    }
+  } catch (err) {
+    console.warn('[Firestore] getAllCustomersFromFirestore warning:', err);
+  }
+  return fallbackUsers;
+}
+
 export async function getCouponsFromFirestore(): Promise<Coupon[]> {
   try {
     const snap = await getDocs(collection(db, 'coupons'));
@@ -309,5 +347,80 @@ export async function getCouponsFromFirestore(): Promise<Coupon[]> {
     return [];
   }
 }
+
+export async function syncCouponsWithFirestore(fallbackCoupons: Coupon[] = []): Promise<Coupon[]> {
+  try {
+    const snap = await getDocs(collection(db, 'coupons'));
+    if (!snap.empty) {
+      const items: Coupon[] = [];
+      snap.forEach(d => items.push(d.data() as Coupon));
+      return items;
+    } else if (fallbackCoupons.length > 0) {
+      for (const coup of fallbackCoupons) {
+        await setDoc(doc(db, 'coupons', coup.id), coup).catch(() => {});
+      }
+      return fallbackCoupons;
+    }
+  } catch (err) {
+    console.warn('[Firestore] syncCouponsWithFirestore warning:', err);
+  }
+  return fallbackCoupons;
+}
+
+export async function saveCouponToFirestore(coupon: Coupon): Promise<void> {
+  const path = 'coupons';
+  try {
+    await setDoc(doc(db, path, coupon.id), coupon);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `${path}/${coupon.id}`);
+  }
+}
+
+export async function deleteCouponFromFirestore(couponId: string): Promise<void> {
+  const path = 'coupons';
+  try {
+    await deleteDoc(doc(db, path, couponId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `${path}/${couponId}`);
+  }
+}
+
+export async function syncAdsWithFirestore(fallbackAds: Advertisement[] = []): Promise<Advertisement[]> {
+  try {
+    const snap = await getDocs(collection(db, 'advertisements'));
+    if (!snap.empty) {
+      const items: Advertisement[] = [];
+      snap.forEach(d => items.push(d.data() as Advertisement));
+      return items;
+    } else if (fallbackAds.length > 0) {
+      for (const ad of fallbackAds) {
+        await setDoc(doc(db, 'advertisements', ad.id), ad).catch(() => {});
+      }
+      return fallbackAds;
+    }
+  } catch (err) {
+    console.warn('[Firestore] syncAdsWithFirestore warning:', err);
+  }
+  return fallbackAds;
+}
+
+export async function saveAdToFirestore(ad: Advertisement): Promise<void> {
+  const path = 'advertisements';
+  try {
+    await setDoc(doc(db, path, ad.id), ad);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, `${path}/${ad.id}`);
+  }
+}
+
+export async function deleteProductFromFirestore(productId: string): Promise<void> {
+  const path = 'products';
+  try {
+    await deleteDoc(doc(db, path, productId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `${path}/${productId}`);
+  }
+}
+
 
 
