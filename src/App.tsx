@@ -26,6 +26,7 @@ import { FaqView } from './views/FaqView';
 import { ContactView } from './views/ContactView';
 
 import { Product, Order } from './types';
+import defaultDb from '../data/db.json';
 
 function MainApp() {
   const { user, isAdmin } = useAuth();
@@ -39,7 +40,7 @@ function MainApp() {
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       }
     } catch {}
-    return [];
+    return (defaultDb.products || []) as Product[];
   });
   const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(null);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);

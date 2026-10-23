@@ -128,6 +128,44 @@ function computeAdminStats(
   };
 }
 
+export function sanitizeProduct(p: any): Product {
+  const price = typeof p?.price === 'number' ? p.price : (parseFloat(p?.price) || 0);
+  const originalPrice = p?.originalPrice ? (typeof p.originalPrice === 'number' ? p.originalPrice : parseFloat(p.originalPrice)) : undefined;
+
+  return {
+    id: p?.id || `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    slug: p?.slug || p?.title?.toLowerCase().replace(/[^a-z0-9]+/g, '-') || 'produit',
+    title: p?.title || 'Produit Digital',
+    shortDescription: p?.shortDescription || '',
+    fullDescription: p?.fullDescription || '',
+    price: isNaN(price) ? 0 : price,
+    originalPrice: (originalPrice && !isNaN(originalPrice)) ? originalPrice : undefined,
+    category: p?.category || 'ebooks',
+    categoryLabel: p?.categoryLabel || 'E-books',
+    image: p?.image || '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
+    previewImages: Array.isArray(p?.previewImages) ? p.previewImages : [],
+    tags: Array.isArray(p?.tags) ? p.tags : (typeof p?.tags === 'string' ? p.tags.split(',').map((t: string) => t.trim()) : []),
+    downloadsCount: typeof p?.downloadsCount === 'number' ? p.downloadsCount : (parseInt(p?.downloadsCount) || 0),
+    rating: typeof p?.rating === 'number' ? p.rating : 5,
+    reviewsCount: typeof p?.reviewsCount === 'number' ? p.reviewsCount : 0,
+    isNew: !!p?.isNew,
+    isPromo: !!p?.isPromo,
+    isFeatured: !!p?.isFeatured,
+    isRecommended: !!p?.isRecommended,
+    status: p?.status === 'draft' ? 'draft' : 'published',
+    licenseType: p?.licenseType || 'Licence Standard',
+    fileDetails: {
+      fileName: p?.fileDetails?.fileName || 'ressource_digishop.zip',
+      fileSize: p?.fileDetails?.fileSize || '15.0 Mo',
+      fileFormat: p?.fileDetails?.fileFormat || 'ZIP Archive',
+      version: p?.fileDetails?.version || '1.0'
+    },
+    features: Array.isArray(p?.features) ? p.features : (typeof p?.features === 'string' ? p.features.split(',').map((f: string) => f.trim()) : []),
+    createdAt: p?.createdAt || new Date().toISOString(),
+    updatedAt: p?.updatedAt || new Date().toISOString()
+  };
+}
+
 const ADMIN_DOMAINS: Record<string, { title: string; subtitle: string; icon: any; emoji: string }> = {
   stats: {
     title: "Vue d'ensemble & Stats",
@@ -224,21 +262,25 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   });
 
   const [products, setProducts] = useState<Product[]>(() => {
-    if (Array.isArray(initialProducts) && initialProducts.length > 0) return initialProducts;
+    if (Array.isArray(initialProducts) && initialProducts.length > 0) {
+      return initialProducts.map(sanitizeProduct);
+    }
     try {
       const cached = localStorage.getItem('digishop_products_cache');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          return parsed.map(sanitizeProduct);
+        }
       }
     } catch {}
-    return (defaultDb.products || []) as Product[];
+    return ((defaultDb.products || []) as Product[]).map(sanitizeProduct);
   });
 
   // Synchronize products if passed or updated from parent
   useEffect(() => {
     if (Array.isArray(initialProducts) && initialProducts.length > 0) {
-      setProducts(prev => prev.length === 0 ? initialProducts : prev);
+      setProducts(initialProducts.map(sanitizeProduct));
     }
   }, [initialProducts]);
 
@@ -464,35 +506,39 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       
       // 2. Products
       if (resProducts.ok && Array.isArray(resProducts.data) && resProducts.data.length > 0) {
-        setProducts(resProducts.data);
-        onProductsUpdated?.(resProducts.data);
+        const sanitized = resProducts.data.map(sanitizeProduct);
+        setProducts(sanitized);
+        onProductsUpdated?.(sanitized);
         try {
-          localStorage.setItem('digishop_products_cache', JSON.stringify(resProducts.data));
+          localStorage.setItem('digishop_products_cache', JSON.stringify(sanitized));
         } catch {}
       } else {
-        // Fallback: public products endpoint or Firestore
+        // Fallback: public products endpoint or Firestore or defaultDb
         try {
           const pubRes = await safeFetchJson<Product[]>('/api/products');
           if (pubRes.ok && Array.isArray(pubRes.data) && pubRes.data.length > 0) {
-            setProducts(pubRes.data);
-            onProductsUpdated?.(pubRes.data);
+            const sanitized = pubRes.data.map(sanitizeProduct);
+            setProducts(sanitized);
+            onProductsUpdated?.(sanitized);
             try {
-              localStorage.setItem('digishop_products_cache', JSON.stringify(pubRes.data));
+              localStorage.setItem('digishop_products_cache', JSON.stringify(sanitized));
             } catch {}
           } else {
             const { syncProductsWithFirestore } = await import('../lib/firebase');
-            const initialProds = (defaultDb.products || []) as Product[];
+            const initialProds = ((defaultDb.products || []) as Product[]).map(sanitizeProduct);
             const fsProds = await syncProductsWithFirestore(initialProds);
-            if (fsProds && fsProds.length > 0) {
-              setProducts(fsProds);
-              onProductsUpdated?.(fsProds);
-              try {
-                localStorage.setItem('digishop_products_cache', JSON.stringify(fsProds));
-              } catch {}
-            }
+            const finalProds = (fsProds && fsProds.length > 0 ? fsProds : initialProds).map(sanitizeProduct);
+            setProducts(finalProds);
+            onProductsUpdated?.(finalProds);
+            try {
+              localStorage.setItem('digishop_products_cache', JSON.stringify(finalProds));
+            } catch {}
           }
         } catch (fbErr) {
           console.warn('[Admin] Fallback products load warning:', fbErr);
+          const initialProds = ((defaultDb.products || []) as Product[]).map(sanitizeProduct);
+          setProducts(initialProds);
+          onProductsUpdated?.(initialProds);
         }
       }
 
@@ -1451,433 +1497,479 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       })()}
 
       {/* TAB 2: COMMANDES & VALIDATION DE PAIEMENT */}
-      {activeTab === 'orders' && (
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div>
-              <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
-                Gestion des Commandes
-              </h2>
-              <p className="text-xs text-slate-500">
-                Validez les références de transactions pour les paiements Moov Money ({mobileMoneySettings.moovNumber}) et Mixx ({mobileMoneySettings.mixxNumber}).
-              </p>
+      {activeTab === 'orders' && (() => {
+        const displayedOrders = (orders && orders.length > 0 ? orders : ((defaultDb.orders || []) as Order[]));
+        return (
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div>
+                <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
+                  Gestion des Commandes ({displayedOrders.length})
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Validez les références de transactions pour les paiements Moov Money ({mobileMoneySettings.moovNumber}) et Mixx ({mobileMoneySettings.mixxNumber}).
+                </p>
+              </div>
             </div>
-          </div>
 
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
-                  <th className="p-3.5">Numéro</th>
-                  <th className="p-3.5">Client & Email</th>
-                  <th className="p-3.5">Produit(s)</th>
-                  <th className="p-3.5">Montant</th>
-                  <th className="p-3.5">Moyen & Notification IPN</th>
-                  <th className="p-3.5">Statut & Téléchargement</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {orders.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        {loading ? (
-                          <>
-                            <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
-                            <p className="text-xs font-medium">Chargement des commandes...</p>
-                          </>
-                        ) : (
-                          <>
-                            <ShoppingBag className="w-8 h-8 text-slate-400 opacity-60" />
-                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucune commande enregistrée pour le moment</p>
-                            <p className="text-[11px] text-slate-400">Toutes les commandes passées par vos clients apparaîtront ici.</p>
-                            <button
-                              type="button"
-                              onClick={fetchAdminData}
-                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>Actualiser les commandes</span>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
+                    <th className="p-3.5">Numéro</th>
+                    <th className="p-3.5">Client & Email</th>
+                    <th className="p-3.5">Produit(s)</th>
+                    <th className="p-3.5">Montant</th>
+                    <th className="p-3.5">Moyen & Notification IPN</th>
+                    <th className="p-3.5">Statut & Téléchargement</th>
+                    <th className="p-3.5 text-right">Actions</th>
                   </tr>
-                ) : (
-                  orders.map(order => {
-                  const isPending = order.paymentStatus === 'pending_payment';
-                  const isPaid = order.paymentStatus === 'paid';
-                  const isDownloaded = (order.downloadCount || 0) > 0 || !!order.firstDownloadedAt || order.isRefundable === false;
-
-                  return (
-                    <tr key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
-                      <td className="p-3.5 font-mono font-bold text-slate-900 dark:text-white">
-                        {order.orderNumber}
-                      </td>
-                      <td className="p-3.5">
-                        <p className="font-semibold text-slate-900 dark:text-white">{order.customerName}</p>
-                        <p className="text-[11px] text-slate-500">{order.customerEmail}</p>
-                      </td>
-                      <td className="p-3.5 max-w-xs truncate text-slate-700 dark:text-slate-300">
-                        {order.items.map(i => i.title).join(', ')}
-                      </td>
-                      <td className="p-3.5 font-mono font-bold tabular-nums text-slate-900 dark:text-white">
-                        {order.totalAmount.toFixed(2)} €
-                      </td>
-                      <td className="p-3.5">
-                        <span className="font-semibold uppercase text-sky-600 dark:text-sky-400 block">
-                          {order.paymentMethod}
-                        </span>
-                        {order.ipnConfirmedAt ? (
-                          <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5" title={`Confirmé par ${order.ipnProvider} le ${new Date(order.ipnConfirmedAt).toLocaleString('fr-FR')}`}>
-                            <Zap className="w-2.5 h-2.5" />
-                            <span>IPN {order.ipnProvider || 'Validé'}</span>
-                          </span>
-                        ) : order.paymentDetails.transactionRef ? (
-                          <span className="font-mono text-[10px] text-slate-500 block">
-                            Réf: {order.paymentDetails.transactionRef}
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-400 block">
-                            En attente IPN
-                          </span>
-                        )}
-                      </td>
-                      <td className="p-3.5 space-y-1">
-                        <div>
-                          <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
-                            isPaid
-                              ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
-                              : isPending
-                              ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
-                              : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
-                          }`}>
-                            {order.paymentStatus}
-                          </span>
-                        </div>
-
-                        {/* Download & Anti-refund status badge */}
-                        {isPaid && (
-                          <div>
-                            {isDownloaded ? (
-                              <span
-                                className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800"
-                                title="Produit digital déjà téléchargé par le client. Conformément aux CGV et à la réglementation numérique, tout remboursement est irrévocablement interdit."
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {displayedOrders.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          {loading ? (
+                            <>
+                              <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
+                              <p className="text-xs font-medium">Chargement des commandes...</p>
+                            </>
+                          ) : (
+                            <>
+                              <ShoppingBag className="w-8 h-8 text-slate-400 opacity-60" />
+                              <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucune commande enregistrée pour le moment</p>
+                              <p className="text-[11px] text-slate-400">Toutes les commandes passées par vos clients apparaîtront ici.</p>
+                              <button
+                                type="button"
+                                onClick={fetchAdminData}
+                                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
                               >
-                                <Lock className="w-2.5 h-2.5 text-amber-600" />
-                                <span>Téléchargé ({order.downloadCount}x) · Non remboursable</span>
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>Actualiser les commandes</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedOrders.map(order => {
+                      const isPending = order.paymentStatus === 'pending_payment' || order.paymentStatus === 'pending';
+                      const isPaid = order.paymentStatus === 'paid';
+                      const isDownloaded = (order.downloadCount || 0) > 0 || !!order.firstDownloadedAt || order.isRefundable === false;
+                      const itemsText = Array.isArray(order.items) && order.items.length > 0
+                        ? order.items.map(i => i?.title || 'Produit digital').join(', ')
+                        : 'Produit numérique';
+                      const safeTotal = (typeof order.totalAmount === 'number' && !isNaN(order.totalAmount) ? order.totalAmount : 0).toFixed(2);
+                      const txRef = order.paymentDetails?.transactionRef || (order.paymentDetails as any)?.paydunyaToken;
+
+                      return (
+                        <tr key={order.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="p-3.5 font-mono font-bold text-slate-900 dark:text-white">
+                            {order.orderNumber || order.id}
+                          </td>
+                          <td className="p-3.5">
+                            <p className="font-semibold text-slate-900 dark:text-white">{order.customerName || 'Client'}</p>
+                            <p className="text-[11px] text-slate-500">{order.customerEmail || '-'}</p>
+                          </td>
+                          <td className="p-3.5 max-w-xs truncate text-slate-700 dark:text-slate-300" title={itemsText}>
+                            {itemsText}
+                          </td>
+                          <td className="p-3.5 font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                            {safeTotal} €
+                          </td>
+                          <td className="p-3.5">
+                            <span className="font-semibold uppercase text-sky-600 dark:text-sky-400 block">
+                              {order.paymentMethod || 'Paiement'}
+                            </span>
+                            {order.ipnConfirmedAt ? (
+                              <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold mt-0.5" title={`Confirmé par ${order.ipnProvider} le ${new Date(order.ipnConfirmedAt).toLocaleString('fr-FR')}`}>
+                                <Zap className="w-2.5 h-2.5" />
+                                <span>IPN {order.ipnProvider || 'Validé'}</span>
+                              </span>
+                            ) : txRef ? (
+                              <span className="font-mono text-[10px] text-slate-500 block truncate max-w-[140px]" title={txRef}>
+                                Réf: {txRef}
                               </span>
                             ) : (
-                              <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 font-medium">
-                                <Download className="w-2.5 h-2.5" />
-                                <span>0 téléchargement · Éligible</span>
+                              <span className="text-[10px] text-slate-400 block">
+                                En attente IPN
                               </span>
                             )}
-                          </div>
-                        )}
-                      </td>
-                      <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
-                        {isPending && (
-                          <button
-                            onClick={() => handleUpdateOrderStatus(order.id, 'paid')}
-                            className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors"
-                            title="Vérifier et valider manuellement le paiement"
-                          >
-                            ✓ Valider Paiement
-                          </button>
-                        )}
-                        {isPaid && (
-                          isDownloaded ? (
-                            <button
-                              disabled
-                              className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-400 text-[11px] cursor-not-allowed inline-flex items-center gap-1"
-                              title="Remboursement strictement impossible : le client a déjà téléchargé le fichier numérique."
-                            >
-                              <Lock className="w-3 h-3 text-slate-400" />
-                              <span>Non remboursable</span>
-                            </button>
-                          ) : (
-                            <button
-                              onClick={() => {
-                                if (window.confirm(`Confirmer le remboursement de la commande ${order.orderNumber} ? Le fichier n'a pas encore été téléchargé par le client.`)) {
-                                  handleUpdateOrderStatus(order.id, 'refunded');
-                                }
-                              }}
-                              className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 text-[11px]"
-                              title="Rembourser la commande (le fichier n'a pas encore été téléchargé)"
-                            >
-                              Rembourser
-                            </button>
-                          )
-                        )}
-                      </td>
-                    </tr>
-                  );
-                }))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+                          </td>
+                          <td className="p-3.5 space-y-1">
+                            <div>
+                              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold ${
+                                isPaid
+                                  ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                                  : isPending
+                                  ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                                  : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                              }`}>
+                                {order.paymentStatus || 'en attente'}
+                              </span>
+                            </div>
 
-      {/* TAB 3: PRODUITS DU CATALOGUE */}
-      {activeTab === 'products' && (
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
-              Catalogue Produits ({products.length})
-            </h2>
-
-            <button
-              onClick={() => {
-                setEditingProduct(null);
-                setProductForm({
-                  title: '',
-                  shortDescription: '',
-                  fullDescription: '',
-                  price: 29.90,
-                  originalPrice: 49.90,
-                  category: 'ebooks',
-                  categoryLabel: 'E-books',
-                  image: '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
-                  tags: 'Guide, Digital',
-                  isPromo: false,
-                  isNew: true,
-                  isFeatured: true,
-                  status: 'published',
-                  licenseType: 'Licence Standard',
-                  fileName: 'guide_nouveau.pdf',
-                  fileSize: '12.0 Mo',
-                  fileFormat: 'PDF',
-                  features: 'Contenu premium, Téléchargement direct'
-                });
-                setShowProductModal(true);
-              }}
-              className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-sky-500 hover:bg-slate-800 dark:hover:bg-sky-400 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm"
-            >
-              <Plus className="w-4 h-4" />
-              <span>Ajouter un produit</span>
-            </button>
-          </div>
-
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
-                  <th className="p-3.5">Aperçu</th>
-                  <th className="p-3.5">Titre & Catégorie</th>
-                  <th className="p-3.5">Prix</th>
-                  <th className="p-3.5">Fichier Numérique</th>
-                  <th className="p-3.5">Téléchargements</th>
-                  <th className="p-3.5">Statut</th>
-                  <th className="p-3.5 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {products.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        {loading ? (
-                          <>
-                            <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
-                            <p className="text-xs font-medium">Chargement des produits en cours...</p>
-                          </>
-                        ) : (
-                          <>
-                            <Package className="w-8 h-8 text-slate-400 opacity-60" />
-                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun produit à afficher</p>
-                            <p className="text-[11px] text-slate-400">Cliquez sur « Ajouter un produit » pour créer un produit ou synchronisez avec le serveur.</p>
-                            <button
-                              type="button"
-                              onClick={() => fetchAdminData()}
-                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>Recharger les produits</span>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  products.map(p => (
-                    <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40">
-                      <td className="p-3.5">
-                        <img src={p.image} alt={p.title} className="w-12 h-12 rounded-lg object-cover bg-slate-200" />
-                      </td>
-                      <td className="p-3.5">
-                        <p className="font-semibold text-slate-900 dark:text-white max-w-xs truncate">{p.title}</p>
-                        <p className="text-[11px] text-slate-500">{p.categoryLabel}</p>
-                      </td>
-                      <td className="p-3.5 font-mono font-bold tabular-nums text-slate-900 dark:text-white">
-                        {p.price.toFixed(2)} €
-                      </td>
-                      <td className="p-3.5 font-mono text-[11px] text-slate-500">
-                        {p.fileDetails.fileName} ({p.fileDetails.fileSize})
-                      </td>
-                      <td className="p-3.5 font-mono tabular-nums">
-                        {p.downloadsCount}
-                      </td>
-                      <td className="p-3.5">
-                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
-                          p.status === 'published' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                          {p.status}
-                        </span>
-                      </td>
-                      <td className="p-3.5 text-right space-x-2">
-                        <button
-                          onClick={() => {
-                            setEditingProduct(p);
-                            setProductForm({
-                              title: p.title,
-                              shortDescription: p.shortDescription,
-                              fullDescription: p.fullDescription,
-                              price: p.price,
-                              originalPrice: p.originalPrice || 0,
-                              category: p.category,
-                              categoryLabel: p.categoryLabel,
-                              image: p.image,
-                              tags: p.tags.join(', '),
-                              isPromo: !!p.isPromo,
-                              isNew: !!p.isNew,
-                              isFeatured: !!p.isFeatured,
-                              status: p.status,
-                              licenseType: p.licenseType,
-                              fileName: p.fileDetails.fileName,
-                              fileSize: p.fileDetails.fileSize,
-                              fileFormat: p.fileDetails.fileFormat,
-                              features: p.features.join(', ')
-                            });
-                            setShowProductModal(true);
-                          }}
-                          className="text-slate-600 dark:text-slate-300 hover:text-sky-600 p-1"
-                          title="Modifier"
-                        >
-                          <Edit3 className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => handleDeleteProduct(p.id)}
-                          className="text-rose-500 hover:text-rose-700 p-1"
-                          title="Supprimer"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 4: CLIENTS */}
-      {activeTab === 'customers' && (
-        <div className="space-y-4">
-          <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
-            Base Clients ({customers.length})
-          </h2>
-          <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
-                  <th className="p-3.5">Nom & Email</th>
-                  <th className="p-3.5">Téléphone</th>
-                  <th className="p-3.5">Date Inscription</th>
-                  <th className="p-3.5">Commandes</th>
-                  <th className="p-3.5 font-mono">Dépenses Cumulées</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                {customers.length === 0 ? (
-                  <tr>
-                    <td colSpan={5} className="p-8 text-center text-slate-500 dark:text-slate-400">
-                      <div className="flex flex-col items-center justify-center space-y-2">
-                        {loading ? (
-                          <>
-                            <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
-                            <p className="text-xs font-medium">Chargement des clients...</p>
-                          </>
-                        ) : (
-                          <>
-                            <Users className="w-8 h-8 text-slate-400 opacity-60" />
-                            <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun client enregistré pour le moment</p>
-                            <p className="text-[11px] text-slate-400">Les comptes utilisateurs créés lors des commandes apparaîtront ici.</p>
-                            <button
-                              type="button"
-                              onClick={fetchAdminData}
-                              className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>Actualiser la liste clients</span>
-                            </button>
-                          </>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ) : (
-                  customers.map(c => (
-                    <tr key={c.id}>
-                      <td className="p-3.5">
-                        <p className="font-semibold text-slate-900 dark:text-white">{c.name}</p>
-                        <p className="text-[11px] text-slate-500 font-mono">{c.email}</p>
-                      </td>
-                      <td className="p-3.5 text-slate-600 dark:text-slate-400">{c.phone || '-'}</td>
-                      <td className="p-3.5 text-slate-500">{new Date(c.createdAt).toLocaleDateString('fr-FR')}</td>
-                      <td className="p-3.5 font-mono font-bold tabular-nums">{c.ordersCount}</td>
-                      <td className="p-3.5 font-mono font-bold tabular-nums text-slate-900 dark:text-white">
-                        {c.totalSpent.toFixed(2)} €
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
-
-      {/* TAB 5: COUPONS */}
-      {activeTab === 'coupons' && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-4">
-            <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
-              Codes Promotionnels Actifs ({coupons.length})
-            </h2>
-            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
-              {coupons.length === 0 ? (
-                <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
-                  <Tag className="w-8 h-8 text-slate-400 opacity-60 mx-auto mb-2" />
-                  <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun code promo actif</p>
-                  <p className="text-[11px] text-slate-400 mt-1">Utilisez le formulaire ci-contre pour créer un nouveau code promotionnel.</p>
-                </div>
-              ) : (
-                coupons.map(c => (
-                  <div key={c.id} className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between text-xs">
-                    <div>
-                      <span className="font-mono font-bold text-sky-600 dark:text-sky-400 text-sm">{c.code}</span>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
-                        Réduction : {c.discountValue}% · Minimum : {c.minOrderValue} € · Utilisations : {c.currentUses}/{c.maxUses}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleDeleteCoupon(c.id)}
-                      className="text-rose-500 hover:text-rose-700 p-1"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                  </div>
-                ))
-              )}
+                            {/* Download & Anti-refund status badge */}
+                            {isPaid && (
+                              <div>
+                                {isDownloaded ? (
+                                  <span
+                                    className="inline-flex items-center gap-1 text-[10px] font-bold text-amber-800 dark:text-amber-300 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-md border border-amber-200 dark:border-amber-800"
+                                    title="Produit digital déjà téléchargé par le client. Conformément aux CGV et à la réglementation numérique, tout remboursement est irrévocablement interdit."
+                                  >
+                                    <Lock className="w-2.5 h-2.5 text-amber-600" />
+                                    <span>Téléchargé ({order.downloadCount || 1}x) · Non remboursable</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center gap-1 text-[10px] text-slate-500 font-medium">
+                                    <Download className="w-2.5 h-2.5" />
+                                    <span>0 téléchargement · Éligible</span>
+                                  </span>
+                                )}
+                              </div>
+                            )}
+                          </td>
+                          <td className="p-3.5 text-right space-x-1.5 whitespace-nowrap">
+                            {isPending && (
+                              <button
+                                onClick={() => handleUpdateOrderStatus(order.id, 'paid')}
+                                className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-semibold text-[11px] transition-colors"
+                                title="Vérifier et valider manuellement le paiement"
+                              >
+                                ✓ Valider Paiement
+                              </button>
+                            )}
+                            {isPaid && (
+                              isDownloaded ? (
+                                <button
+                                  disabled
+                                  className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-100 dark:bg-slate-800/80 text-slate-400 text-[11px] cursor-not-allowed inline-flex items-center gap-1"
+                                  title="Remboursement strictement impossible : le client a déjà téléchargé le fichier numérique."
+                                >
+                                  <Lock className="w-3 h-3 text-slate-400" />
+                                  <span>Non remboursable</span>
+                                </button>
+                              ) : (
+                                <button
+                                  onClick={() => {
+                                    if (window.confirm(`Confirmer le remboursement de la commande ${order.orderNumber} ? Le fichier n'a pas encore été téléchargé par le client.`)) {
+                                      handleUpdateOrderStatus(order.id, 'refunded');
+                                    }
+                                  }}
+                                  className="px-2 py-1 rounded-lg border border-slate-200 dark:border-slate-700 text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950 text-[11px]"
+                                  title="Rembourser la commande (le fichier n'a pas encore été téléchargé)"
+                                >
+                                  Rembourser
+                                </button>
+                              )
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           </div>
+        );
+      })()}
+
+      {/* TAB 3: PRODUITS DU CATALOGUE */}
+      {activeTab === 'products' && (() => {
+        const displayedProducts = (products && products.length > 0 ? products : ((defaultDb.products || []) as Product[])).map(sanitizeProduct);
+        return (
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
+                Catalogue Produits ({displayedProducts.length})
+              </h2>
+
+              <button
+                onClick={() => {
+                  setEditingProduct(null);
+                  setProductForm({
+                    title: '',
+                    shortDescription: '',
+                    fullDescription: '',
+                    price: 29.90,
+                    originalPrice: 49.90,
+                    category: 'ebooks',
+                    categoryLabel: 'E-books',
+                    image: '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
+                    tags: 'Guide, Digital',
+                    isPromo: false,
+                    isNew: true,
+                    isFeatured: true,
+                    status: 'published',
+                    licenseType: 'Licence Standard',
+                    fileName: 'guide_nouveau.pdf',
+                    fileSize: '12.0 Mo',
+                    fileFormat: 'PDF',
+                    features: 'Contenu premium, Téléchargement direct'
+                  });
+                  setShowProductModal(true);
+                }}
+                className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-sky-500 hover:bg-slate-800 dark:hover:bg-sky-400 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Ajouter un produit</span>
+              </button>
+            </div>
+
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
+                    <th className="p-3.5">Aperçu</th>
+                    <th className="p-3.5">Titre & Catégorie</th>
+                    <th className="p-3.5">Prix</th>
+                    <th className="p-3.5">Fichier Numérique</th>
+                    <th className="p-3.5">Téléchargements</th>
+                    <th className="p-3.5">Statut</th>
+                    <th className="p-3.5 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {displayedProducts.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          {loading ? (
+                            <>
+                              <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
+                              <p className="text-xs font-medium">Chargement des produits en cours...</p>
+                            </>
+                          ) : (
+                            <>
+                              <Package className="w-8 h-8 text-slate-400 opacity-60" />
+                              <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun produit à afficher</p>
+                              <p className="text-[11px] text-slate-400">Cliquez sur « Ajouter un produit » pour créer un produit ou synchronisez avec le serveur.</p>
+                              <button
+                                type="button"
+                                onClick={() => fetchAdminData()}
+                                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>Recharger les produits</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedProducts.map(rawP => {
+                      const p = sanitizeProduct(rawP);
+                      const priceNum = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0;
+                      const formattedPrice = priceNum.toFixed(2);
+                      const safeFileName = p.fileDetails?.fileName || 'ressource_digishop.zip';
+                      const safeFileSize = p.fileDetails?.fileSize || '15.0 Mo';
+                      const safeFormat = p.fileDetails?.fileFormat || 'ZIP Archive';
+                      const safeTags = Array.isArray(p.tags) ? p.tags.join(', ') : (typeof p.tags === 'string' ? p.tags : '');
+                      const safeFeatures = Array.isArray(p.features) ? p.features.join(', ') : (typeof p.features === 'string' ? p.features : '');
+                      const safeCategoryLabel = p.categoryLabel || p.category || 'Digital';
+                      const safeDownloads = typeof p.downloadsCount === 'number' && !isNaN(p.downloadsCount) ? p.downloadsCount : 0;
+                      const safeImage = p.image || '/src/assets/images/product_ebook_marketing_1791461314730.jpg';
+
+                      return (
+                        <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="p-3.5">
+                            <img
+                              src={safeImage}
+                              alt={p.title || 'Produit'}
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).src = '/src/assets/images/product_ebook_marketing_1791461314730.jpg';
+                              }}
+                              className="w-12 h-12 rounded-lg object-cover bg-slate-200 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700"
+                            />
+                          </td>
+                          <td className="p-3.5">
+                            <p className="font-semibold text-slate-900 dark:text-white max-w-xs truncate" title={p.title}>{p.title}</p>
+                            <p className="text-[11px] text-slate-500">{safeCategoryLabel}</p>
+                          </td>
+                          <td className="p-3.5 font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                            {formattedPrice} €
+                          </td>
+                          <td className="p-3.5 font-mono text-[11px] text-slate-500">
+                            {safeFileName} ({safeFileSize})
+                          </td>
+                          <td className="p-3.5 font-mono tabular-nums text-slate-700 dark:text-slate-300">
+                            {safeDownloads}
+                          </td>
+                          <td className="p-3.5">
+                            <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                              p.status === 'published' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400'
+                            }`}>
+                              {p.status || 'published'}
+                            </span>
+                          </td>
+                          <td className="p-3.5 text-right space-x-2 whitespace-nowrap">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setEditingProduct(p);
+                                setProductForm({
+                                  title: p.title || '',
+                                  shortDescription: p.shortDescription || '',
+                                  fullDescription: p.fullDescription || '',
+                                  price: priceNum,
+                                  originalPrice: typeof p.originalPrice === 'number' ? p.originalPrice : 0,
+                                  category: p.category || 'ebooks',
+                                  categoryLabel: safeCategoryLabel,
+                                  image: safeImage,
+                                  tags: safeTags,
+                                  isPromo: !!p.isPromo,
+                                  isNew: !!p.isNew,
+                                  isFeatured: !!p.isFeatured,
+                                  status: p.status || 'published',
+                                  licenseType: p.licenseType || 'Licence Standard',
+                                  fileName: safeFileName,
+                                  fileSize: safeFileSize,
+                                  fileFormat: safeFormat,
+                                  features: safeFeatures
+                                });
+                                setShowProductModal(true);
+                              }}
+                              className="text-slate-600 dark:text-slate-300 hover:text-sky-600 p-1 rounded hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                              title="Modifier"
+                            >
+                              <Edit3 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => handleDeleteProduct(p.id)}
+                              className="text-rose-500 hover:text-rose-700 p-1 rounded hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"
+                              title="Supprimer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* TAB 4: CLIENTS */}
+      {activeTab === 'customers' && (() => {
+        const displayedCustomers = (customers && customers.length > 0 ? customers : ((defaultDb.users || []) as User[]));
+        return (
+          <div className="space-y-4">
+            <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
+              Base Clients ({displayedCustomers.length})
+            </h2>
+            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
+                    <th className="p-3.5">Nom & Email</th>
+                    <th className="p-3.5">Téléphone</th>
+                    <th className="p-3.5">Date Inscription</th>
+                    <th className="p-3.5">Commandes</th>
+                    <th className="p-3.5 font-mono">Dépenses Cumulées</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                  {displayedCustomers.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="p-8 text-center text-slate-500 dark:text-slate-400">
+                        <div className="flex flex-col items-center justify-center space-y-2">
+                          {loading ? (
+                            <>
+                              <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
+                              <p className="text-xs font-medium">Chargement des clients...</p>
+                            </>
+                          ) : (
+                            <>
+                              <Users className="w-8 h-8 text-slate-400 opacity-60" />
+                              <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun client enregistré pour le moment</p>
+                              <p className="text-[11px] text-slate-400">Les comptes utilisateurs créés lors des commandes apparaîtront ici.</p>
+                              <button
+                                type="button"
+                                onClick={fetchAdminData}
+                                className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>Actualiser la liste clients</span>
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    displayedCustomers.map(c => {
+                      const totalSpentNum = typeof c.totalSpent === 'number' && !isNaN(c.totalSpent) ? c.totalSpent : 0;
+                      const ordersCountNum = typeof c.ordersCount === 'number' ? c.ordersCount : 0;
+                      const dateFormatted = c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '-';
+
+                      return (
+                        <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
+                          <td className="p-3.5">
+                            <p className="font-semibold text-slate-900 dark:text-white">{c.name || 'Client'}</p>
+                            <p className="text-[11px] text-slate-500 font-mono">{c.email}</p>
+                          </td>
+                          <td className="p-3.5 text-slate-600 dark:text-slate-400">{c.phone || '-'}</td>
+                          <td className="p-3.5 text-slate-500">{dateFormatted}</td>
+                          <td className="p-3.5 font-mono font-bold tabular-nums">{ordersCountNum}</td>
+                          <td className="p-3.5 font-mono font-bold tabular-nums text-slate-900 dark:text-white">
+                            {totalSpentNum.toFixed(2)} €
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* TAB 5: COUPONS */}
+      {activeTab === 'coupons' && (() => {
+        const displayedCoupons = (coupons && coupons.length > 0 ? coupons : ((defaultDb.coupons || []) as Coupon[]));
+        return (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-2 space-y-4">
+              <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
+                Codes Promotionnels Actifs ({displayedCoupons.length})
+              </h2>
+              <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 p-4 space-y-3">
+                {displayedCoupons.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 dark:text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+                    <Tag className="w-8 h-8 text-slate-400 opacity-60 mx-auto mb-2" />
+                    <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun code promo actif</p>
+                    <p className="text-[11px] text-slate-400 mt-1">Utilisez le formulaire ci-contre pour créer un nouveau code promotionnel.</p>
+                  </div>
+                ) : (
+                  displayedCoupons.map(c => (
+                    <div key={c.id} className="p-3.5 rounded-xl border border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/40 flex items-center justify-between text-xs">
+                      <div>
+                        <span className="font-mono font-bold text-sky-600 dark:text-sky-400 text-sm">{c.code}</span>
+                        <p className="text-[11px] text-slate-500 mt-0.5">
+                          Réduction : {c.discountValue}% · Minimum : {c.minOrderValue} € · Utilisations : {c.currentUses}/{c.maxUses}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => handleDeleteCoupon(c.id)}
+                        className="text-rose-500 hover:text-rose-700 p-1"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))
+                )}
+              </div>
+            </div>
 
           <form onSubmit={handleCreateCoupon} className="p-6 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 space-y-3 text-xs">
             <h3 className="font-bold text-sm font-display text-slate-900 dark:text-white">
@@ -1923,28 +2015,31 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             </button>
           </form>
         </div>
-      )}
+      );
+    })()}
 
       {/* TAB 6: ESPACES PUBS */}
-      {activeTab === 'ads' && (
-        <div className="space-y-6">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div>
-              <h2 className="text-base font-bold font-display text-slate-950 dark:text-white flex items-center gap-2">
-                <Radio className="w-4 h-4 text-sky-500" />
-                <span>Gestion & Monétisation des Espaces Publicitaires ({ads.length})</span>
-              </h2>
-              <p className="text-xs text-slate-500">
-                Configurez les 4 emplacements publicitaires du site : bannières partenaires, liens d'affiliation, ou annonces sponsorisées.
-              </p>
+      {activeTab === 'ads' && (() => {
+        const displayedAds = (ads && ads.length > 0 ? ads : ((defaultDb.advertisements || []) as Advertisement[]));
+        return (
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <h2 className="text-base font-bold font-display text-slate-950 dark:text-white flex items-center gap-2">
+                  <Radio className="w-4 h-4 text-sky-500" />
+                  <span>Gestion & Monétisation des Espaces Publicitaires ({displayedAds.length})</span>
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Configurez les 4 emplacements publicitaires du site : bannières partenaires, liens d'affiliation, ou annonces sponsorisées.
+                </p>
+              </div>
+              <span className="px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 self-start sm:self-auto">
+                {displayedAds.filter(a => a.isEnabled).length} active{displayedAds.filter(a => a.isEnabled).length > 1 ? 's' : ''} sur {displayedAds.length}
+              </span>
             </div>
-            <span className="px-3 py-1 rounded-full text-xs font-semibold bg-sky-50 dark:bg-sky-950/60 text-sky-700 dark:text-sky-300 border border-sky-200 dark:border-sky-800 self-start sm:self-auto">
-              {ads.filter(a => a.isEnabled).length} active{ads.filter(a => a.isEnabled).length > 1 ? 's' : ''} sur {ads.length}
-            </span>
-          </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-            {ads.length === 0 ? (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+              {displayedAds.length === 0 ? (
               <div className="col-span-full p-8 text-center text-slate-500 dark:text-slate-400 border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
                 <Radio className="w-8 h-8 text-slate-400 opacity-60 mx-auto mb-2" />
                 <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun espace publicitaire configuré</p>
@@ -1959,7 +2054,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 </button>
               </div>
             ) : (
-              ads.map(ad => {
+              displayedAds.map(ad => {
               const positionNames: Record<string, { label: string; location: string; icon: string }> = {
                 top_bar: { label: "Bannière d'En-tête (Top Bar)", location: "En haut de toutes les pages (au-dessus du menu)", icon: "📌" },
                 home_middle: { label: "Bannière Centrale Accueil", location: "Au centre de la page d'accueil (grand format)", icon: "🏠" },
@@ -2025,7 +2120,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             }))}
           </div>
         </div>
-      )}
+      );
+    })()}
 
       {/* TAB 7: PASSERELLES & CLÉS API (PAYDUNYA / PAYPAL / MOBILE MONEY) */}
       {activeTab === 'gateways' && (

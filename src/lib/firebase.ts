@@ -108,15 +108,29 @@ export async function syncProductsWithFirestore(fallbackProducts: Product[]): Pr
     const snap = await getDocs(collection(db, path));
     if (!snap.empty) {
       const items: Product[] = [];
-      snap.forEach(d => items.push(d.data() as Product));
-      return items;
-    } else {
-      // Seed initial products to Firestore
-      for (const prod of fallbackProducts) {
-        await setDoc(doc(db, path, prod.id), prod);
+      snap.forEach(d => {
+        const item = d.data() as Product;
+        if (item && item.id && item.title) {
+          items.push(item);
+        }
+      });
+      if (items.length > 0) {
+        const existingIds = new Set(items.map(i => i.id));
+        const missingFallbacks = fallbackProducts.filter(fb => !existingIds.has(fb.id));
+        if (missingFallbacks.length > 0) {
+          for (const m of missingFallbacks) {
+            setDoc(doc(db, path, m.id), m).catch(() => {});
+          }
+          return [...items, ...missingFallbacks];
+        }
+        return items;
       }
-      return fallbackProducts;
     }
+    // Seed initial products to Firestore
+    for (const prod of fallbackProducts) {
+      await setDoc(doc(db, path, prod.id), prod).catch(() => {});
+    }
+    return fallbackProducts;
   } catch (err) {
     console.warn('[Firebase] Lecture Firestore en attente, utilisation des données locales:', err);
     return fallbackProducts;
