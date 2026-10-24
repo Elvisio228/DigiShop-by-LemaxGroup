@@ -24,19 +24,10 @@ jobs:
       - name: Build Production Assets
         run: npm run build
 
-      - name: Deploy to Firebase Hosting (Action officielle Google/Firebase)
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIGISHOP_BY_LEMAXGROUP != '' }}
+      - name: Deploy to Firebase Hosting
         uses: FirebaseExtended/action-hosting-deploy@v0
         with:
           repoToken: '${{ secrets.GITHUB_TOKEN }}'
           firebaseServiceAccount: '${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIGISHOP_BY_LEMAXGROUP }}'
           channelId: live
           projectId: digishop-by-lemaxgroup
-
-      - name: Deploy to Firebase Hosting (Fallback CLI avec Token)
-        if: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIGISHOP_BY_LEMAXGROUP == '' && secrets.FIREBASE_TOKEN != '' }}
-        run: |
-          npx -y firebase-tools deploy --only hosting --token "${{ secrets.FIREBASE_TOKEN }}" --project digishop-by-lemaxgroup --non-interactive
-
-      - name: Validation finale
-        run: echo "✅ Pipeline GitHub Actions DigiShop exécuté avec succès !"
