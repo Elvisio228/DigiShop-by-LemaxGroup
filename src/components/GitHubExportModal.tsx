@@ -146,13 +146,23 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({ isOpen, on
               </a>
             </div>
 
+            <div className="p-4 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-900 dark:text-emerald-200 space-y-1.5">
+              <p className="font-bold flex items-center gap-1.5">
+                <CheckCircle className="w-4 h-4 text-emerald-600" />
+                <span>Code envoyé à GitHub avec succès !</span>
+              </p>
+              <p className="text-[11px] opacity-90">
+                GitHub Actions va maintenant compiler et publier la nouvelle version sur Firebase Hosting. Vous pouvez suivre l'avancement en direct dans l'onglet <strong>Actions</strong> de votre dépôt GitHub !
+              </p>
+            </div>
+
             <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700 text-xs text-slate-700 dark:text-slate-300 space-y-2">
               <p className="font-bold text-slate-900 dark:text-white flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-sky-500" />
-                Étape suivante sur votre autre compte Google AI Studio :
+                Étape suivante pour ouvrir dans un autre Google AI Studio :
               </p>
               <ol className="list-decimal list-inside space-y-1 text-slate-600 dark:text-slate-300 pl-1">
-                <li>Connectez-vous sur Google AI Studio avec votre second compte.</li>
+                <li>Connectez-vous sur Google AI Studio.</li>
                 <li>Cliquez sur <strong>« Create »</strong> ou <strong>« Import from GitHub »</strong>.</li>
                 <li>Sélectionnez votre dépôt <strong>{repoName || 'votre dépôt'}</strong>.</li>
                 <li>Votre boutique sera clonée à 100% à l'identique avec tous ses produits, son code et ses configurations !</li>
@@ -251,6 +261,24 @@ export const GitHubExportModal: React.FC<GitHubExportModalProps> = ({ isOpen, on
               />
               <div className="p-2.5 rounded-lg bg-slate-100 dark:bg-slate-800/80 text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
                 💡 <strong>Rappel pour GitHub Actions :</strong> Cochez bien <strong>« repo »</strong> ET <strong>« workflow »</strong>. C'est ce qui permet aux fichiers <code className="bg-slate-200 dark:bg-slate-700 px-1 py-0.5 rounded">.github/workflows</code> d'être mis à jour pour lancer automatiquement vos builds dans l'onglet <strong>Action</strong> sur GitHub !
+              </div>
+
+              {/* Android Deployment Helper Note */}
+              <div className="p-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-900/60 text-[11px] text-blue-900 dark:text-blue-200 leading-relaxed space-y-1.5">
+                <p className="font-bold flex items-center gap-1.5">
+                  <span>📱 Vous êtes sur Android ? Pour mettre à jour votre boutique en ligne :</span>
+                </p>
+                <p className="opacity-90">
+                  Pour que GitHub publie automatiquement sur Firebase Hosting sans ordinateur :
+                </p>
+                <ol className="list-decimal list-inside space-y-1 opacity-90 pl-1">
+                  <li>Ouvrez <a href="https://console.firebase.google.com/project/digishop-by-lemaxgroup/settings/serviceaccounts/adminsdk" target="_blank" rel="noopener noreferrer" className="underline font-bold">Console Firebase (Comptes de service)</a></li>
+                  <li>Cliquez sur <strong>« Générer une nouvelle clé privée »</strong> (télécharge un petit fichier .json)</li>
+                  <li>Copiez le contenu du fichier et collez-le dans votre dépôt GitHub : <strong>Settings &gt; Secrets and variables &gt; Actions &gt; New secret</strong> avec le nom : <code className="font-bold select-all bg-blue-100 dark:bg-blue-900 px-1 rounded">FIREBASE_SERVICE_ACCOUNT_DIGISHOP_BY_LEMAXGROUP</code></li>
+                </ol>
+                <p className="text-[10px] text-blue-700 dark:text-blue-300 font-semibold pt-0.5">
+                  ✓ Dès que ce secret est enregistré sur GitHub, chaque export mettra votre boutique en ligne à jour immédiatement !
+                </p>
               </div>
             </div>
 

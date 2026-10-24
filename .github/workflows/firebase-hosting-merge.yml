@@ -25,25 +25,35 @@ jobs:
         run: npm run build
 
       - name: Deploy to Firebase Hosting
-        continue-on-error: true
         env:
           FIREBASE_SECRET: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_DIGISHOP_BY_LEMAXGROUP }}
           FIREBASE_TOKEN: ${{ secrets.FIREBASE_TOKEN }}
         run: |
           if [ -n "$FIREBASE_SECRET" ]; then
-            echo "Service account Firebase détecté. Déploiement en cours..."
+            echo "🚀 Compte de service Firebase détecté. Déploiement vers Firebase Hosting en cours..."
             echo "$FIREBASE_SECRET" > /tmp/gcp_key.json
             export GOOGLE_APPLICATION_CREDENTIALS=/tmp/gcp_key.json
-            npx -y firebase-tools deploy --only hosting --project digishop-by-lemaxgroup --non-interactive || true
+            npx -y firebase-tools deploy --only hosting --project digishop-by-lemaxgroup --non-interactive
             rm -f /tmp/gcp_key.json
+            echo "✅ Déploiement Firebase Hosting réussi !"
           elif [ -n "$FIREBASE_TOKEN" ]; then
-            echo "Token CI Firebase détecté. Déploiement en cours..."
-            npx -y firebase-tools deploy --only hosting --token "$FIREBASE_TOKEN" --project digishop-by-lemaxgroup --non-interactive || true
+            echo "🚀 Token CI Firebase détecté. Déploiement vers Firebase Hosting en cours..."
+            npx -y firebase-tools deploy --only hosting --token "$FIREBASE_TOKEN" --project digishop-by-lemaxgroup --non-interactive
+            echo "✅ Déploiement Firebase Hosting réussi !"
           else
-            echo "=========================================================="
-            echo "Compilation et vérification réussies avec succès !"
-            echo "Les fichiers de production sont prêts dans le dossier dist/"
-            echo "=========================================================="
+            echo "=========================================================================="
+            echo "⚠️ ATTENTION : Le code a été compilé avec succès (dossier dist/ prêt),"
+            echo "MAIS aucun secret Firebase n'est configuré dans votre dépôt GitHub !"
+            echo "Pour que GitHub puisse envoyer automatiquement les modifications sur Firebase :"
+            echo "1. Dans GitHub, allez dans : Settings > Secrets and variables > Actions"
+            echo "2. Cliquez sur 'New repository secret'"
+            echo "3. Nom : FIREBASE_TOKEN"
+            echo "   Valeur : le token généré sur votre terminal avec la commande : npx firebase login:ci"
+            echo ""
+            echo "Alternative sans GitHub Actions : Déployez directement depuis votre terminal avec :"
+            echo "   npx firebase deploy --only hosting"
+            echo "=========================================================================="
+            exit 1
           fi
 
       - name: Validation finale
