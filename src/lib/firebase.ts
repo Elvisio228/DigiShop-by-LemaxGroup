@@ -137,6 +137,48 @@ export async function syncProductsWithFirestore(fallbackProducts: Product[]): Pr
   }
 }
 
+export async function getAllProductsFromFirestore(fallbackProducts?: Product[]): Promise<Product[]> {
+  const path = 'products';
+  try {
+    const snap = await getDocs(collection(db, path));
+    if (!snap.empty) {
+      const items: Product[] = [];
+      snap.forEach(d => {
+        const item = d.data() as Product;
+        if (item && item.title) {
+          items.push({
+            ...item,
+            id: item.id || d.id
+          });
+        }
+      });
+      if (items.length > 0) {
+        if (fallbackProducts && fallbackProducts.length > 0) {
+          const existingIds = new Set(items.map(i => i.id));
+          const missingFallbacks = fallbackProducts.filter(fb => !existingIds.has(fb.id));
+          if (missingFallbacks.length > 0) {
+            for (const m of missingFallbacks) {
+              setDoc(doc(db, path, m.id), m).catch(() => {});
+            }
+            return [...items, ...missingFallbacks];
+          }
+        }
+        return items;
+      }
+    }
+    if (fallbackProducts && fallbackProducts.length > 0) {
+      for (const prod of fallbackProducts) {
+        await setDoc(doc(db, path, prod.id), prod).catch(() => {});
+      }
+      return fallbackProducts;
+    }
+    return [];
+  } catch (err) {
+    console.warn('[Firebase] Erreur chargement Firestore products:', err);
+    return fallbackProducts || [];
+  }
+}
+
 export async function saveProductToFirestore(product: Product): Promise<void> {
   const path = 'products';
   try {

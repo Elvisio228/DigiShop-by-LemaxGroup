@@ -47,6 +47,7 @@ import defaultDb from '../../data/db.json';
 import {
   updateOrderStatusInFirestore,
   saveProductToFirestore,
+  getAllProductsFromFirestore,
   getAllOrdersFromFirestore,
   getAllCustomersFromFirestore,
   syncCouponsWithFirestore,
@@ -467,6 +468,26 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [editingAd, setEditingAd] = useState<Advertisement | null>(null);
   const [savingAd, setSavingAd] = useState(false);
 
+  // Load products directly from Firebase Firestore collection 'products'
+  const loadProductsDirectlyFromFirestore = async (): Promise<Product[] | null> => {
+    try {
+      const initialProds = ((defaultDb.products || []) as Product[]).map(sanitizeProduct);
+      const fsProds = await getAllProductsFromFirestore(initialProds);
+      if (fsProds && fsProds.length > 0) {
+        const sanitized = fsProds.map(sanitizeProduct);
+        setProducts(sanitized);
+        onProductsUpdated?.(sanitized);
+        try {
+          localStorage.setItem('digishop_products_cache', JSON.stringify(sanitized));
+        } catch {}
+        return sanitized;
+      }
+    } catch (e) {
+      console.warn('[Admin] Direct Firestore products fetch error:', e);
+    }
+    return null;
+  };
+
   const fetchAdminData = async () => {
     setLoading(true);
     try {
@@ -504,38 +525,17 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         }
       }
       
-      // 2. Products
-      if (resProducts.ok && Array.isArray(resProducts.data) && resProducts.data.length > 0) {
-        const sanitized = resProducts.data.map(sanitizeProduct);
-        setProducts(sanitized);
-        onProductsUpdated?.(sanitized);
-        try {
-          localStorage.setItem('digishop_products_cache', JSON.stringify(sanitized));
-        } catch {}
-      } else {
-        // Fallback: public products endpoint or Firestore or defaultDb
-        try {
-          const pubRes = await safeFetchJson<Product[]>('/api/products');
-          if (pubRes.ok && Array.isArray(pubRes.data) && pubRes.data.length > 0) {
-            const sanitized = pubRes.data.map(sanitizeProduct);
-            setProducts(sanitized);
-            onProductsUpdated?.(sanitized);
-            try {
-              localStorage.setItem('digishop_products_cache', JSON.stringify(sanitized));
-            } catch {}
-          } else {
-            const { syncProductsWithFirestore } = await import('../lib/firebase');
-            const initialProds = ((defaultDb.products || []) as Product[]).map(sanitizeProduct);
-            const fsProds = await syncProductsWithFirestore(initialProds);
-            const finalProds = (fsProds && fsProds.length > 0 ? fsProds : initialProds).map(sanitizeProduct);
-            setProducts(finalProds);
-            onProductsUpdated?.(finalProds);
-            try {
-              localStorage.setItem('digishop_products_cache', JSON.stringify(finalProds));
-            } catch {}
-          }
-        } catch (fbErr) {
-          console.warn('[Admin] Fallback products load warning:', fbErr);
+      // 2. Products - DIRECT FIRESTORE FIRST (Ensures user-added products like "Logo" display reliably)
+      const directFsProds = await loadProductsDirectlyFromFirestore();
+      if (!directFsProds || directFsProds.length === 0) {
+        if (resProducts.ok && Array.isArray(resProducts.data) && resProducts.data.length > 0) {
+          const sanitized = resProducts.data.map(sanitizeProduct);
+          setProducts(sanitized);
+          onProductsUpdated?.(sanitized);
+          try {
+            localStorage.setItem('digishop_products_cache', JSON.stringify(sanitized));
+          } catch {}
+        } else {
           const initialProds = ((defaultDb.products || []) as Product[]).map(sanitizeProduct);
           setProducts(initialProds);
           onProductsUpdated?.(initialProds);
@@ -706,6 +706,13 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       fetchAdminData();
     }
   }, [isAdmin, token]);
+
+  // Re-synchronize products directly from Firestore whenever user selects the Products tab
+  useEffect(() => {
+    if (activeTab === 'products') {
+      loadProductsDirectlyFromFirestore();
+    }
+  }, [activeTab]);
 
   if (!isAdmin) {
     return (
@@ -899,6 +906,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
       showToast(editingProduct ? `Produit modifié ✓ (Nouveau prix : ${fullProductData.price.toFixed(2)} €)` : 'Nouveau produit créé et publié ✓', 'success');
       setShowProductModal(false);
       setEditingProduct(null);
+      await loadProductsDirectlyFromFirestore();
       fetchAdminData();
     } catch (err: any) {
       showToast(err.message || 'Erreur lors de l\'enregistrement', 'error');
@@ -1380,7 +1388,12 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               )}
               <button
                 type="button"
-                onClick={fetchAdminData}
+                onClick={() => {
+                  fetchAdminData();
+                  if (activeTab === 'products') {
+                    loadProductsDirectlyFromFirestore();
+                  }
+                }}
                 className="p-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors shadow-xs"
                 title="Actualiser les données de ce domaine"
               >
@@ -1682,41 +1695,71 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         const displayedProducts = (products && products.length > 0 ? products : ((defaultDb.products || []) as Product[])).map(sanitizeProduct);
         return (
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
-                Catalogue Produits ({displayedProducts.length})
-              </h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
+                    Catalogue Produits ({displayedProducts.length})
+                  </h2>
+                  <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800" title="Connecté directement à la collection Firestore 'products'">
+                    <CheckCircle className="w-2.5 h-2.5" />
+                    <span>Firebase Firestore ({displayedProducts.length} produits)</span>
+                  </span>
+                </div>
+                <p className="text-xs text-slate-500 mt-0.5">
+                  Synchronisé en direct avec la base de données Firebase Firestore (collection &laquo; products &raquo;).
+                </p>
+              </div>
 
-              <button
-                onClick={() => {
-                  setEditingProduct(null);
-                  setProductForm({
-                    title: '',
-                    shortDescription: '',
-                    fullDescription: '',
-                    price: 29.90,
-                    originalPrice: 49.90,
-                    category: 'ebooks',
-                    categoryLabel: 'E-books',
-                    image: '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
-                    tags: 'Guide, Digital',
-                    isPromo: false,
-                    isNew: true,
-                    isFeatured: true,
-                    status: 'published',
-                    licenseType: 'Licence Standard',
-                    fileName: 'guide_nouveau.pdf',
-                    fileSize: '12.0 Mo',
-                    fileFormat: 'PDF',
-                    features: 'Contenu premium, Téléchargement direct'
-                  });
-                  setShowProductModal(true);
-                }}
-                className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-sky-500 hover:bg-slate-800 dark:hover:bg-sky-400 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm"
-              >
-                <Plus className="w-4 h-4" />
-                <span>Ajouter un produit</span>
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const res = await loadProductsDirectlyFromFirestore();
+                    if (res && res.length > 0) {
+                      showToast(`Synchronisation Firebase réussie : ${res.length} produits trouvés.`, 'success');
+                    } else {
+                      showToast('Catalogue actualisé.', 'info');
+                    }
+                  }}
+                  className="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-semibold text-xs flex items-center gap-1.5 transition-colors border border-slate-200 dark:border-slate-700 shadow-xs"
+                  title="Forcer la synchronisation avec Firebase Firestore"
+                >
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span>Actualiser Firebase</span>
+                </button>
+
+                <button
+                  onClick={() => {
+                    setEditingProduct(null);
+                    setProductForm({
+                      title: '',
+                      shortDescription: '',
+                      fullDescription: '',
+                      price: 29.90,
+                      originalPrice: 49.90,
+                      category: 'ebooks',
+                      categoryLabel: 'E-books',
+                      image: '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
+                      tags: 'Guide, Digital',
+                      isPromo: false,
+                      isNew: true,
+                      isFeatured: true,
+                      status: 'published',
+                      licenseType: 'Licence Standard',
+                      fileName: 'guide_nouveau.pdf',
+                      fileSize: '12.0 Mo',
+                      fileFormat: 'PDF',
+                      features: 'Contenu premium, Téléchargement direct'
+                    });
+                    setShowProductModal(true);
+                  }}
+                  className="px-3.5 py-2 rounded-xl bg-slate-900 dark:bg-sky-500 hover:bg-slate-800 dark:hover:bg-sky-400 text-white font-semibold text-xs flex items-center gap-1.5 shadow-sm"
+                >
+                  <Plus className="w-4 h-4" />
+                  <span>Ajouter un produit</span>
+                </button>
+              </div>
             </div>
 
             <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
@@ -1740,20 +1783,21 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           {loading ? (
                             <>
                               <Loader2 className="w-6 h-6 animate-spin text-sky-500" />
-                              <p className="text-xs font-medium">Chargement des produits en cours...</p>
+                              <p className="text-xs font-semibold text-slate-700 dark:text-slate-200">Connexion à Firebase Firestore...</p>
+                              <p className="text-[11px] text-slate-400">Chargement de la collection &laquo; products &raquo; en cours...</p>
                             </>
                           ) : (
                             <>
                               <Package className="w-8 h-8 text-slate-400 opacity-60" />
-                              <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun produit à afficher</p>
-                              <p className="text-[11px] text-slate-400">Cliquez sur « Ajouter un produit » pour créer un produit ou synchronisez avec le serveur.</p>
+                              <p className="font-semibold text-xs text-slate-800 dark:text-slate-200">Aucun produit trouvé dans Firebase</p>
+                              <p className="text-[11px] text-slate-400">Cliquez sur « Ajouter un produit » pour créer un produit ou synchronisez avec Firestore.</p>
                               <button
                                 type="button"
-                                onClick={() => fetchAdminData()}
+                                onClick={() => loadProductsDirectlyFromFirestore()}
                                 className="mt-2 inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-blue-50 dark:bg-blue-950/60 text-blue-600 dark:text-blue-400 border border-blue-200/80 dark:border-blue-900/60 hover:bg-blue-100 dark:hover:bg-blue-900 transition-colors"
                               >
                                 <RefreshCw className="w-3.5 h-3.5" />
-                                <span>Recharger les produits</span>
+                                <span>Recharger depuis Firebase</span>
                               </button>
                             </>
                           )}

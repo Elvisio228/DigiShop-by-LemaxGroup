@@ -53,8 +53,26 @@ function MainApp() {
   // GitHub Export Modal state (Android/Mobile project transfer)
   const [githubModalOpen, setGithubModalOpen] = useState(false);
 
-  // Centralized product loading & synchronisation
+  // Centralized product loading & synchronisation directly from Firestore
   const loadProducts = useCallback(async (forceRefresh = false) => {
+    // 1. Primary source: direct from Firestore collection 'products'
+    try {
+      const { getAllProductsFromFirestore } = await import('./lib/firebase');
+      const dbData = (await import('../data/db.json')).default;
+      const initialProds = (dbData.products || []) as Product[];
+      const firestoreProds = await getAllProductsFromFirestore(initialProds);
+      if (firestoreProds && firestoreProds.length > 0) {
+        setProducts(firestoreProds);
+        try {
+          localStorage.setItem('digishop_products_cache', JSON.stringify(firestoreProds));
+        } catch {}
+        return;
+      }
+    } catch (fbErr) {
+      console.warn('[App] Direct Firestore load fallback to API/local:', fbErr);
+    }
+
+    // 2. API fallback (when running Express backend)
     try {
       const { safeFetchJson } = await import('./lib/apiClient');
       const url = '/api/products' + (forceRefresh ? `?_t=${Date.now()}` : '');
@@ -68,28 +86,13 @@ function MainApp() {
       }
     } catch {}
 
-    // Fallback for Firebase Hosting static hosting: load directly from Firestore
+    // 3. Bundled fallback
     try {
-      const { syncProductsWithFirestore } = await import('./lib/firebase');
       const dbData = (await import('../data/db.json')).default;
-      const initialProds = (dbData.products || []) as Product[];
-      const firestoreProds = await syncProductsWithFirestore(initialProds);
-      if (firestoreProds && firestoreProds.length > 0) {
-        setProducts(firestoreProds);
-        try {
-          localStorage.setItem('digishop_products_cache', JSON.stringify(firestoreProds));
-        } catch {}
-        return;
+      if (Array.isArray(dbData.products) && dbData.products.length > 0) {
+        setProducts(dbData.products as Product[]);
       }
-    } catch (fbErr) {
-      console.warn('[App] Chargement produits par défaut:', fbErr);
-      try {
-        const dbData = (await import('../data/db.json')).default;
-        if (Array.isArray(dbData.products)) {
-          setProducts(dbData.products as Product[]);
-        }
-      } catch {}
-    }
+    } catch {}
   }, []);
 
   // Synchronize on mount and listen to real-time update events
@@ -167,7 +170,7 @@ function MainApp() {
   const navigate = (view: string, param?: string) => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 
-    if (view === 'home' || view === 'catalog' || view === 'product' || view === 'categories' || view === 'produits' || view === 'products') {
+    if (view === 'home' || view === 'catalog' || view === 'product' || view === 'categories' || view === 'produits' || view === 'products' || view === 'admin') {
       loadProducts(true);
     }
 
