@@ -268,10 +268,35 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           notes: `Paiement Mixx vers le numéro ${mobileMoney.mixxNumber}`
         };
       } else if (paymentMethod === 'paydunya') {
-        const tokenVal = paydunyaToken.trim() || `PD-TOK-${Date.now()}`;
+        const tokenVal = paydunyaToken.trim() || `PD-TOK-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
         const cleanNumber = cardNumber.replace(/\D/g, '');
+        let invoiceUrl = `https://paydunya.com/sandbox-checkout/invoice/${tokenVal}`;
+
+        // Attempt creating invoice on server API if available
+        try {
+          const invRes = await fetch('/api/payments/paydunya/create-invoice', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              orderNumber: `DS-${Math.floor(100000 + Math.random() * 900000)}`,
+              amount: total,
+              customerName: `${firstName} ${lastName}`,
+              customerEmail: email,
+              customerPhone: paydunyaPhone || phone,
+              items: checkoutItems.map(i => ({ name: i.title, quantity: 1, unitPrice: i.price, totalPrice: i.price }))
+            })
+          });
+          if (invRes.ok) {
+            const invData = await invRes.json();
+            if (invData && (invData.invoiceUrl || invData.responseText)) {
+              invoiceUrl = invData.invoiceUrl || invData.responseText;
+            }
+          }
+        } catch {}
+
         paymentDetails = {
           paydunyaToken: tokenVal,
+          paydunyaInvoiceUrl: invoiceUrl,
           channel: paydunyaChannel,
           payerPhone: paydunyaPhone || phone,
           ...(paydunyaChannel === 'card_regional' ? {
@@ -901,6 +926,20 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                           </span>
                           <span className="font-mono text-emerald-600 dark:text-emerald-400 font-bold shrink-0">100% Automatisé</span>
                         </div>
+
+                        {/* Guide sur la validation mobile PayDunya */}
+                        <div className="p-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 space-y-1.5">
+                          <div className="flex items-center gap-1.5 font-bold">
+                            <Smartphone className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                            <span>Comment autoriser le paiement sur votre portable ?</span>
+                          </div>
+                          <p className="leading-snug text-slate-600 dark:text-slate-300">
+                            Après avoir validé la commande, vous pourrez ouvrir directement le guichet PayDunya sécurisé où votre opérateur mobile déclenchera la demande d'autorisation (Push USSD) sur votre téléphone.
+                          </p>
+                          <p className="text-[10px] text-amber-700 dark:text-amber-400">
+                            💡 Si la boutique utilise les clés de test (Sandbox), aucun montant réel n'est débité sur votre carte SIM. Pour régler directement sans intermédiaire, vous pouvez aussi choisir <strong>Moov Money (*155#)</strong> ou <strong>Mixx / T-Money (*145#)</strong> ci-dessous.
+                          </p>
+                        </div>
                       </div>
                     </div>
                   )}
@@ -971,6 +1010,20 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                           </button>
                         </div>
 
+                        {/* Bouton de déclenchement USSD 1-clic sur téléphone Android */}
+                        <div className="space-y-1.5">
+                          <a
+                            href={`tel:*155*1*1*${mobileMoney.moovNumber.replace(/\D/g, '')}*${Math.round(total)}%23`}
+                            className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98]"
+                          >
+                            <Smartphone className="w-4 h-4 shrink-0" />
+                            <span>Composer le code Moov Money (*155#)</span>
+                          </a>
+                          <p className="text-[10px] text-slate-500 text-center">
+                            Compose automatiquement le code de transfert vers le <strong>{mobileMoney.moovNumber}</strong>. Tapez ensuite votre code secret.
+                          </p>
+                        </div>
+
                         {/* Champs de saisie */}
                         <div className="space-y-3">
                           <div>
@@ -1000,7 +1053,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         </div>
 
                         <p className="text-[11px] text-red-600 dark:text-red-400 font-medium">
-                          ⚠️ Le téléchargement ne sera disponible que lorsque vous aurez envoyé le numéro de la transaction reçu par SMS.
+                          ⚠️ Le téléchargement sera disponible dès que vous aurez confirmé la commande ou envoyé votre référence SMS.
                         </p>
 
                       </div>
@@ -1073,6 +1126,20 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                           </button>
                         </div>
 
+                        {/* Bouton de déclenchement USSD 1-clic sur téléphone Android */}
+                        <div className="space-y-1.5">
+                          <a
+                            href={`tel:*145*1*${mobileMoney.mixxNumber.replace(/\D/g, '')}*${Math.round(total)}*1%23`}
+                            className="w-full py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98]"
+                          >
+                            <Smartphone className="w-4 h-4 shrink-0" />
+                            <span>Composer le code TMoney / Mixx (*145#)</span>
+                          </a>
+                          <p className="text-[10px] text-slate-500 text-center">
+                            Compose automatiquement le code vers le <strong>{mobileMoney.mixxNumber}</strong>. Tapez ensuite votre code secret.
+                          </p>
+                        </div>
+
                         {/* Champs de saisie */}
                         <div className="space-y-3">
                           <div>
@@ -1102,7 +1169,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         </div>
 
                         <p className="text-[11px] text-red-600 dark:text-red-400 font-medium">
-                          ⚠️ Le téléchargement ne sera disponible que lorsque vous aurez envoyé le numéro de la transaction reçu par SMS.
+                          ⚠️ Le téléchargement sera disponible dès que vous aurez confirmé la commande ou envoyé votre référence SMS.
                         </p>
 
                       </div>

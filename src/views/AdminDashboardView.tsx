@@ -344,7 +344,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   // Payment Gateways Settings state
   const [paydunyaSettings, setPaydunyaSettings] = useState({
-    mode: 'live' as 'test' | 'live',
+    mode: 'test' as 'test' | 'live',
     test: {
       masterKey: 'A9aptKvE-lZP6-DcnX-Q4xk-EM55f2AnvUUe',
       publicKey: 'test_public_C0DiGjAriG6r8OSoFAh2ELErGjk',
