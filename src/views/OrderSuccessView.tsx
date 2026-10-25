@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Order } from '../types';
 import { CheckCircle2, Download, Clock, ShieldCheck, AlertCircle, ArrowRight, ExternalLink, RefreshCw, Lock, Zap, Smartphone, MessageCircle, HelpCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
+import { useCurrency } from '../context/CurrencyContext';
 import { updateOrderStatusInFirestore, saveOrderToFirestore } from '../lib/firebase';
 
 interface OrderSuccessViewProps {
@@ -11,12 +12,23 @@ interface OrderSuccessViewProps {
 
 export const OrderSuccessView: React.FC<OrderSuccessViewProps> = ({ order, onNavigate }) => {
   const { showToast } = useToast();
+  const { formatPrice } = useCurrency();
   const [currentOrder, setCurrentOrder] = useState<Order>(order);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [validatingDirectly, setValidatingDirectly] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
 
   const isPaid = currentOrder.paymentStatus === 'paid';
+
+  // Montant réel en FCFA (si stocké en base Euro ou FCFA)
+  const cfaAmount = Math.round(
+    currentOrder.totalAmount > 100
+      ? currentOrder.totalAmount
+      : currentOrder.totalAmount * 655.957
+  );
+  const formattedPrice = currentOrder.totalAmount > 100
+    ? `${currentOrder.totalAmount.toLocaleString('fr-FR')} FCFA`
+    : formatPrice(currentOrder.totalAmount);
 
   const checkOrderStatus = async () => {
     setCheckingStatus(true);
@@ -194,7 +206,7 @@ L'équipe Digishop by Lemax Group.
   const payChannel = currentOrder.paymentDetails?.channel;
 
   // WhatsApp confirmation text
-  const waMessage = `Bonjour Digishop,%20je%20viens%20d%27effectuer%20la%20commande%20${encodeURIComponent(currentOrder.orderNumber)}%20d%27un%20montant%20de%20${encodeURIComponent(currentOrder.totalAmount.toString())}%20FCFA%20(Client%20:%20${encodeURIComponent(currentOrder.customerName)}).%20Merci%20de%20valider%20l%27acc%C3%A8s%20%C3%A0%20mes%20t%C3%A9l%C3%A9chargements.`;
+  const waMessage = `Bonjour Digishop,%20je%20viens%20d%27effectuer%20la%20commande%20${encodeURIComponent(currentOrder.orderNumber)}%20d%27un%20montant%20de%20${encodeURIComponent(formattedPrice)}%20(Client%20:%20${encodeURIComponent(currentOrder.customerName)}).%20Merci%20de%20valider%20l%27acc%C3%A8s%20%C3%A0%20mes%20t%C3%A9l%C3%A9chargements.`;
 
   return (
     <div className="max-w-3xl mx-auto px-4 sm:px-6 py-10 space-y-8">
@@ -230,7 +242,7 @@ L'équipe Digishop by Lemax Group.
           </div>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/80 dark:bg-slate-900/80 border border-slate-200 dark:border-slate-800 text-xs font-mono">
             <span>Montant :</span>
-            <strong className="text-slate-900 dark:text-white">{currentOrder.totalAmount} FCFA</strong>
+            <strong className="text-slate-900 dark:text-white">{formattedPrice}</strong>
           </div>
           {!isPaid && (
             <button
@@ -255,20 +267,20 @@ L'équipe Digishop by Lemax Group.
           </div>
 
           <p className="text-xs text-amber-800 dark:text-amber-300 leading-relaxed">
-            Pour confirmer votre achat de <strong>{currentOrder.totalAmount} FCFA</strong>, choisissez l'action appropriée ci-dessous depuis votre smartphone Android :
+            Pour confirmer votre achat de <strong>{formattedPrice}</strong> ({cfaAmount.toLocaleString('fr-FR')} FCFA), choisissez l'action appropriée ci-dessous depuis votre smartphone Android :
           </p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
             {/* 1. USSD Moov Money */}
             <a
-              href={`tel:*155*1*1*99668884*${Math.round(currentOrder.totalAmount)}%23`}
+              href={`tel:*155*1*1*99668884*${cfaAmount}%23`}
               className="p-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-semibold text-xs flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]"
             >
               <div className="flex items-center gap-2.5">
                 <Smartphone className="w-4 h-4 shrink-0" />
                 <div className="text-left">
                   <span className="block font-bold">Moov Money Togo</span>
-                  <span className="block text-[10px] opacity-90 font-mono">*155*1*1*99668884*{Math.round(currentOrder.totalAmount)}#</span>
+                  <span className="block text-[10px] opacity-90 font-mono">*155*1*1*99668884*{cfaAmount}#</span>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 shrink-0" />
@@ -276,14 +288,14 @@ L'équipe Digishop by Lemax Group.
 
             {/* 2. USSD TMoney / Mixx */}
             <a
-              href={`tel:*145*1*90107715*${Math.round(currentOrder.totalAmount)}*1%23`}
+              href={`tel:*145*1*90107715*${cfaAmount}*1%23`}
               className="p-3.5 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-semibold text-xs flex items-center justify-between shadow-sm transition-transform active:scale-[0.98]"
             >
               <div className="flex items-center gap-2.5">
                 <Smartphone className="w-4 h-4 shrink-0" />
                 <div className="text-left">
                   <span className="block font-bold">TMoney / Mixx (Togocom)</span>
-                  <span className="block text-[10px] opacity-90 font-mono">*145*1*90107715*{Math.round(currentOrder.totalAmount)}*1#</span>
+                  <span className="block text-[10px] opacity-90 font-mono">*145*1*90107715*{cfaAmount}*1#</span>
                 </div>
               </div>
               <ArrowRight className="w-4 h-4 shrink-0" />

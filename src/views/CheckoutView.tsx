@@ -39,11 +39,31 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   onCancel
 }) => {
   const { user } = useAuth();
-  const { cart, subtotal, discountAmount, total, couponCode, clearCart } = useCart();
+  const { cart, subtotal: cartSubtotal, discountAmount: cartDiscount, total: cartTotal, couponCode, clearCart } = useCart();
   const { showToast } = useToast();
   const { formatPrice, currencyConfig } = useCurrency();
 
-  const checkoutItems = initialItems || cart;
+  const checkoutItems = (initialItems && initialItems.length > 0) ? initialItems : cart;
+
+  // Calcul dynamique et fiable du sous-total et du total basé sur checkoutItems (fonctionne en Achat Direct 1-clic ET avec Panier)
+  const subtotal = React.useMemo(() => {
+    return checkoutItems.reduce((sum, item) => sum + (Number(item?.price) || 0), 0);
+  }, [checkoutItems]);
+
+  const discountAmount = React.useMemo(() => {
+    if (!couponCode) return 0;
+    return Math.min(cartDiscount, subtotal);
+  }, [couponCode, cartDiscount, subtotal]);
+
+  const total = React.useMemo(() => {
+    const calc = subtotal - discountAmount;
+    return calc > 0 ? Math.round(calc * 100) / 100 : 0;
+  }, [subtotal, discountAmount]);
+
+  // Montant réel en FCFA pour les passerelles locales (Moov Money, Mixx/TMoney, PayDunya)
+  const totalInCfa = React.useMemo(() => {
+    return Math.round(total * 655.957);
+  }, [total]);
 
   // Step state: 1 (Infos) -> 2 (Payment choice) -> 3 (Confirmation summary) -> 4 (Processing/Payment)
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
@@ -279,7 +299,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               orderNumber: `DS-${Math.floor(100000 + Math.random() * 900000)}`,
-              amount: total,
+              amount: totalInCfa > 0 ? totalInCfa : total,
               customerName: `${firstName} ${lastName}`,
               customerEmail: email,
               customerPhone: paydunyaPhone || phone,
@@ -1013,14 +1033,14 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         {/* Bouton de déclenchement USSD 1-clic sur téléphone Android */}
                         <div className="space-y-1.5">
                           <a
-                            href={`tel:*155*1*1*${mobileMoney.moovNumber.replace(/\D/g, '')}*${Math.round(total)}%23`}
+                            href={`tel:*155*1*1*${mobileMoney.moovNumber.replace(/\D/g, '')}*${totalInCfa > 0 ? totalInCfa : Math.round(total)}%23`}
                             className="w-full py-2.5 px-3 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98]"
                           >
                             <Smartphone className="w-4 h-4 shrink-0" />
                             <span>Composer le code Moov Money (*155#)</span>
                           </a>
                           <p className="text-[10px] text-slate-500 text-center">
-                            Compose automatiquement le code de transfert vers le <strong>{mobileMoney.moovNumber}</strong>. Tapez ensuite votre code secret.
+                            Compose automatiquement le code de transfert vers le <strong>{mobileMoney.moovNumber}</strong> ({totalInCfa > 0 ? `${totalInCfa.toLocaleString('fr-FR')} FCFA` : formatPrice(total)}). Tapez ensuite votre code secret.
                           </p>
                         </div>
 
@@ -1129,14 +1149,14 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         {/* Bouton de déclenchement USSD 1-clic sur téléphone Android */}
                         <div className="space-y-1.5">
                           <a
-                            href={`tel:*145*1*${mobileMoney.mixxNumber.replace(/\D/g, '')}*${Math.round(total)}*1%23`}
+                            href={`tel:*145*1*${mobileMoney.mixxNumber.replace(/\D/g, '')}*${totalInCfa > 0 ? totalInCfa : Math.round(total)}*1%23`}
                             className="w-full py-2.5 px-3 rounded-xl bg-sky-600 hover:bg-sky-500 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm transition-transform active:scale-[0.98]"
                           >
                             <Smartphone className="w-4 h-4 shrink-0" />
                             <span>Composer le code TMoney / Mixx (*145#)</span>
                           </a>
                           <p className="text-[10px] text-slate-500 text-center">
-                            Compose automatiquement le code vers le <strong>{mobileMoney.mixxNumber}</strong>. Tapez ensuite votre code secret.
+                            Compose automatiquement le code vers le <strong>{mobileMoney.mixxNumber}</strong> ({totalInCfa > 0 ? `${totalInCfa.toLocaleString('fr-FR')} FCFA` : formatPrice(total)}). Tapez ensuite votre code secret.
                           </p>
                         </div>
 
