@@ -239,7 +239,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onOpenGitHubExport,
   onProductsUpdated
 }) => {
-  const { user, isAdmin, token } = useAuth();
+  const { user, isAdmin, token, loginAsAdminDemo } = useAuth();
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'stats' | 'orders' | 'products' | 'customers' | 'coupons' | 'ads' | 'reviews' | 'gateways' | 'security' | 'ipn'>(initialTab || 'stats');
@@ -716,18 +716,31 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
 
   if (!isAdmin) {
     return (
-      <div className="max-w-md mx-auto px-4 py-20 text-center space-y-4">
-        <ShieldCheck className="w-12 h-12 text-rose-500 mx-auto" />
-        <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white">Accès Restreint</h2>
+      <div className="max-w-md mx-auto px-4 py-16 text-center space-y-4">
+        <ShieldCheck className="w-14 h-14 text-amber-500 mx-auto" />
+        <h2 className="text-xl font-bold font-display text-slate-900 dark:text-white">Accès Administrateur Requis</h2>
         <p className="text-xs text-slate-500">
-          Ce tableau de bord est réservé aux administrateurs de Digishop.
+          Connectez-vous pour administrer les commandes, les produits, les clients et les coupons de Digishop.
         </p>
-        <button
-          onClick={() => onNavigate('home')}
-          className="px-4 py-2 text-xs font-semibold bg-slate-900 dark:bg-sky-500 text-white rounded-xl"
-        >
-          Retour à l'accueil
-        </button>
+        <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-2">
+          <button
+            type="button"
+            onClick={async () => {
+              await loginAsAdminDemo?.();
+              fetchAdminData();
+            }}
+            className="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm transition-colors"
+          >
+            👑 Se connecter comme Administrateur (1 clic)
+          </button>
+          <button
+            type="button"
+            onClick={() => onNavigate('home')}
+            className="px-4 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+          >
+            Retour à l'accueil
+          </button>
+        </div>
       </div>
     );
   }
@@ -1525,7 +1538,83 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
+            {/* Mobile Card List View (Optimisé smartphone Android) */}
+            <div className="sm:hidden space-y-3">
+              {displayedOrders.length === 0 ? (
+                <div className="p-6 text-center text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <p className="text-xs">Aucune commande enregistrée pour le moment</p>
+                </div>
+              ) : (
+                displayedOrders.map(order => {
+                  const isPending = order.paymentStatus === 'pending_payment' || order.paymentStatus === 'pending';
+                  const isPaid = order.paymentStatus === 'paid';
+                  const isDownloaded = (order.downloadCount || 0) > 0 || !!order.firstDownloadedAt || order.isRefundable === false;
+                  const safeTotal = (typeof order.totalAmount === 'number' && !isNaN(order.totalAmount) ? order.totalAmount : 0).toFixed(2);
+                  const itemsText = Array.isArray(order.items) && order.items.length > 0
+                    ? order.items.map(i => i?.title || 'Produit digital').join(', ')
+                    : 'Produit numérique';
+                  const txRef = order.paymentDetails?.transactionRef || (order.paymentDetails as any)?.paydunyaToken;
+
+                  return (
+                    <div key={`mob-order-${order.id}`} className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <span className="font-mono font-bold text-sky-600 dark:text-sky-400">
+                          {order.orderNumber || order.id}
+                        </span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold ${
+                          isPaid
+                            ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300'
+                            : isPending
+                            ? 'bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 animate-pulse'
+                            : 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300'
+                        }`}>
+                          {order.paymentStatus || 'en attente'}
+                        </span>
+                      </div>
+                      <div>
+                        <p className="font-bold text-slate-900 dark:text-white">{order.customerName || 'Client'}</p>
+                        <p className="text-[11px] text-slate-500 font-mono">{order.customerEmail || '-'}</p>
+                        <p className="text-slate-700 dark:text-slate-300 mt-1 line-clamp-2">📦 {itemsText}</p>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800">
+                        <div>
+                          <span className="text-[10px] text-slate-400 block font-semibold">Total</span>
+                          <span className="font-mono font-bold text-slate-950 dark:text-white text-sm">{safeTotal} €</span>
+                        </div>
+                        <div className="text-right">
+                          <span className="text-[10px] text-slate-400 block font-semibold">Moyen</span>
+                          <span className="font-semibold uppercase text-sky-600 dark:text-sky-400 text-[11px]">{order.paymentMethod || 'Carte'}</span>
+                        </div>
+                      </div>
+                      {txRef && (
+                        <div className="p-2 rounded-lg bg-slate-50 dark:bg-slate-800/60 font-mono text-[10px] text-slate-600 dark:text-slate-400">
+                          Réf: {txRef}
+                        </div>
+                      )}
+                      <div className="pt-1">
+                        {isPending && (
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateOrderStatus(order.id, 'paid')}
+                            className="w-full py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-sm transition-colors"
+                          >
+                            ✓ Valider Paiement
+                          </button>
+                        )}
+                        {isPaid && isDownloaded && (
+                          <div className="text-center py-1 text-[10px] text-amber-600 dark:text-amber-400 font-semibold bg-amber-50 dark:bg-amber-950/40 rounded-lg border border-amber-200 dark:border-amber-900/50">
+                            🔒 Téléchargé ({order.downloadCount || 1}x) · Non remboursable
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
@@ -1762,7 +1851,92 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
+            {/* Mobile Cards (smartphone view) */}
+            <div className="sm:hidden space-y-3">
+              {displayedProducts.length === 0 ? (
+                <div className="p-6 text-center text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <p className="text-xs">Aucun produit trouvé dans Firebase</p>
+                </div>
+              ) : (
+                displayedProducts.map(rawP => {
+                  const p = sanitizeProduct(rawP);
+                  const priceNum = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0;
+                  const safeImage = p.image || '/src/assets/images/product_ebook_marketing_1791461314730.jpg';
+                  const safeCategoryLabel = p.categoryLabel || p.category || 'Digital';
+
+                  return (
+                    <div key={`mob-prod-${p.id}`} className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-3 text-xs">
+                      <div className="flex items-start gap-3">
+                        <img
+                          src={safeImage}
+                          alt={p.title}
+                          className="w-14 h-14 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
+                        />
+                        <div className="min-w-0 flex-1">
+                          <p className="font-bold text-slate-900 dark:text-white truncate">{p.title}</p>
+                          <span className="text-[10px] text-slate-400 block mt-0.5">{safeCategoryLabel}</span>
+                          <span className="font-mono font-bold text-sky-600 dark:text-sky-400 text-sm mt-1 block">
+                            {priceNum.toFixed(2)} €
+                          </span>
+                        </div>
+                      </div>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px]">
+                        <span className="text-slate-500 font-mono">
+                          📁 {p.fileDetails?.fileName || 'ressource.zip'}
+                        </span>
+                        <span className={`px-2 py-0.5 rounded-md text-[10px] font-semibold ${
+                          p.status === 'published' ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300' : 'bg-slate-100 text-slate-600 dark:bg-slate-800'
+                        }`}>
+                          {p.status || 'published'}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingProduct(p);
+                            setProductForm({
+                              title: p.title || '',
+                              shortDescription: p.shortDescription || '',
+                              fullDescription: p.fullDescription || '',
+                              price: priceNum,
+                              originalPrice: typeof p.originalPrice === 'number' ? p.originalPrice : 0,
+                              category: p.category || 'ebooks',
+                              categoryLabel: safeCategoryLabel,
+                              image: safeImage,
+                              tags: Array.isArray(p.tags) ? p.tags.join(', ') : '',
+                              isPromo: !!p.isPromo,
+                              isNew: !!p.isNew,
+                              isFeatured: !!p.isFeatured,
+                              status: p.status || 'published',
+                              licenseType: p.licenseType || 'Licence Standard',
+                              fileName: p.fileDetails?.fileName || 'ressource.zip',
+                              fileSize: p.fileDetails?.fileSize || '15.0 Mo',
+                              fileFormat: p.fileDetails?.fileFormat || 'ZIP',
+                              features: Array.isArray(p.features) ? p.features.join(', ') : ''
+                            });
+                            setShowProductModal(true);
+                          }}
+                          className="flex-1 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold text-center hover:bg-slate-100 transition-colors"
+                        >
+                          Modifier
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteProduct(p.id)}
+                          className="px-3 py-1.5 rounded-lg border border-rose-200 dark:border-rose-900 bg-rose-50/50 dark:bg-rose-950/40 text-rose-600 font-semibold hover:bg-rose-100 transition-colors"
+                        >
+                          Supprimer
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
@@ -1910,7 +2084,40 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
             <h2 className="text-base font-bold font-display text-slate-950 dark:text-white">
               Base Clients ({displayedCustomers.length})
             </h2>
-            <div className="rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
+            {/* Mobile Cards (smartphone view) */}
+            <div className="sm:hidden space-y-3">
+              {displayedCustomers.length === 0 ? (
+                <div className="p-6 text-center text-slate-500 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                  <p className="text-xs">Aucun client enregistré pour le moment</p>
+                </div>
+              ) : (
+                displayedCustomers.map(c => {
+                  const totalSpentNum = typeof c.totalSpent === 'number' && !isNaN(c.totalSpent) ? c.totalSpent : 0;
+                  const ordersCountNum = typeof c.ordersCount === 'number' ? c.ordersCount : 0;
+                  const dateFormatted = c.createdAt ? new Date(c.createdAt).toLocaleDateString('fr-FR') : '-';
+
+                  return (
+                    <div key={`mob-cust-${c.id}`} className="p-4 rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm space-y-2.5 text-xs">
+                      <div className="flex items-center justify-between">
+                        <p className="font-bold text-slate-900 dark:text-white text-sm">{c.name || 'Client'}</p>
+                        <span className="font-mono font-bold text-sky-600 dark:text-sky-400">
+                          {totalSpentNum.toFixed(2)} €
+                        </span>
+                      </div>
+                      <p className="text-[11px] text-slate-500 font-mono">{c.email}</p>
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100 dark:border-slate-800 text-[11px] text-slate-500">
+                        <span>Tél: {c.phone || '-'}</span>
+                        <span>{ordersCountNum} commande{ordersCountNum > 1 ? 's' : ''}</span>
+                        <span>Inscrit: {dateFormatted}</span>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            {/* Desktop Table View */}
+            <div className="hidden sm:block rounded-2xl border border-slate-200/80 dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
                   <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50 text-slate-500 font-semibold">
