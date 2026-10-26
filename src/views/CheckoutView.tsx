@@ -288,43 +288,47 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           notes: `Paiement Mixx vers le numéro ${mobileMoney.mixxNumber}`
         };
       } else if (paymentMethod === 'paydunya') {
-        const tokenVal = paydunyaToken.trim() || `PD-TOK-${Date.now()}-${Math.random().toString(36).substring(2, 6).toUpperCase()}`;
-        const cleanNumber = cardNumber.replace(/\D/g, '');
-        let invoiceUrl = `https://paydunya.com/sandbox-checkout/invoice/${tokenVal}`;
+        const { createPayDunyaInvoice } = await import('../lib/payments/paydunyaClient');
+        const cfaAmount = totalInCfa > 0 ? totalInCfa : Math.round(total * 655.957);
+        const randOrderNum = `DS-${Math.floor(100000 + Math.random() * 900000)}`;
 
-        // Attempt creating invoice on server API if available
-        try {
-          const invRes = await fetch('/api/payments/paydunya/create-invoice', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              orderNumber: `DS-${Math.floor(100000 + Math.random() * 900000)}`,
-              amount: totalInCfa > 0 ? totalInCfa : total,
-              customerName: `${firstName} ${lastName}`,
-              customerEmail: email,
-              customerPhone: paydunyaPhone || phone,
-              items: checkoutItems.map(i => ({ name: i.title, quantity: 1, unitPrice: i.price, totalPrice: i.price }))
-            })
-          });
-          if (invRes.ok) {
-            const invData = await invRes.json();
-            if (invData && (invData.invoiceUrl || invData.responseText)) {
-              invoiceUrl = invData.invoiceUrl || invData.responseText;
-            }
-          }
-        } catch {}
+        const invoiceResult = await createPayDunyaInvoice({
+          orderNumber: randOrderNum,
+          amount: cfaAmount,
+          customerName: `${firstName} ${lastName}`.trim(),
+          customerEmail: email,
+          customerPhone: paydunyaPhone || phone,
+          channel: paydunyaChannel,
+          items: checkoutItems.map(i => ({
+            name: i.title,
+            quantity: 1,
+            unitPrice: i.price,
+            totalPrice: i.price
+          }))
+        });
+
+        if (!invoiceResult.success) {
+          showToast(`Erreur PayDunya : ${invoiceResult.error || "Impossible d'initialiser le paiement automatique"}. Vérifiez vos clés en admin.`, 'error');
+          setLoading(false);
+          return;
+        }
+
+        const tokenVal = invoiceResult.token || `PD-TOK-${Date.now()}`;
+        const invoiceUrl = invoiceResult.invoiceUrl || `https://app.paydunya.com/checkout/invoice/${tokenVal}`;
+        const cleanNumber = cardNumber.replace(/\D/g, '');
 
         paymentDetails = {
           paydunyaToken: tokenVal,
           paydunyaInvoiceUrl: invoiceUrl,
           channel: paydunyaChannel,
           payerPhone: paydunyaPhone || phone,
+          mode: invoiceResult.mode,
           ...(paydunyaChannel === 'card_regional' ? {
             cardLast4: cleanNumber.slice(-4) || '4242',
             cardHolder: cardHolder || `${firstName} ${lastName}`,
             cardType: detectCardType(cleanNumber)
           } : {}),
-          notes: `Paiement PayDunya via canal ${paydunyaChannel}`
+          notes: `Paiement Mobile Automatique PayDunya (${paydunyaChannel}) - Déclenchement Push USSD vers ${paydunyaPhone || phone}`
         };
       }
 
@@ -401,6 +405,20 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
       await saveOrderToFirestore(orderData).catch(err => {
         console.warn('[Firebase] Synchronisation Firestore silencieuse:', err);
       });
+
+      // Si paiement PayDunya, redirection immédiate vers le guichet de paiement PayDunya
+      // C'est ce guichet qui déclenche le message USSD Push automatique sur le portable du client
+      if (paymentMethod === 'paydunya' && paymentDetails?.paydunyaInvoiceUrl) {
+        try {
+          sessionStorage.setItem('digishop_pending_order', JSON.stringify(orderData));
+        } catch {}
+        clearCart();
+        showToast('Ouverture sécurisée de PayDunya... Déclenchement de la confirmation sur votre portable.', 'info');
+        setTimeout(() => {
+          window.location.href = paymentDetails.paydunyaInvoiceUrl;
+        }, 300);
+        return;
+      }
 
       clearCart();
       if (orderData.paymentStatus === 'paid') {
@@ -1324,7 +1342,13 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                   className="px-6 py-3 rounded-xl bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 text-white font-bold text-xs transition-all shadow-md flex items-center gap-2 disabled:opacity-50"
                 >
                   <Lock className="w-3.5 h-3.5" />
-                  <span>{loading ? 'Traitement en cours...' : `Confirmer et Régler ${formatPrice(total)}`}</span>
+                  <span>
+                    {loading
+                      ? 'Connexion sécurisée & Envoi du Push...'
+                      : paymentMethod === 'paydunya'
+                      ? `⚡ Déclencher le paiement PayDunya (${formatPrice(total)})`
+                      : `Confirmer et Régler ${formatPrice(total)}`}
+                  </span>
                 </button>
               </div>
 

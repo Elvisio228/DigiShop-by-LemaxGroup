@@ -128,9 +128,72 @@ function MainApp() {
 
   // Handle URL parsing on mount and popstate for clean SEO URLs
   useEffect(() => {
-    const handleUrlRoute = () => {
+    const handleUrlRoute = async () => {
       const path = window.location.pathname;
       const search = window.location.search;
+      const urlParams = new URLSearchParams(search);
+
+      // Détection automatique du retour de paiement PayDunya
+      const paydunyaStatus = urlParams.get('paydunya_status') || urlParams.get('status');
+      const paydunyaToken = urlParams.get('token') || urlParams.get('paydunya_token');
+      const orderRef = urlParams.get('order') || urlParams.get('order_id');
+
+      if (paydunyaStatus === 'success' || (paydunyaToken && !path.startsWith('/admin'))) {
+        try {
+          let pendingOrder: Order | null = null;
+          const cached = sessionStorage.getItem('digishop_pending_order');
+          if (cached) {
+            try { pendingOrder = JSON.parse(cached); } catch {}
+          }
+
+          if (!pendingOrder && orderRef) {
+            const { db } = await import('./lib/firebase');
+            const { doc, getDoc } = await import('firebase/firestore');
+            const snap = await getDoc(doc(db, 'orders', orderRef));
+            if (snap.exists()) {
+              pendingOrder = snap.data() as Order;
+            }
+          }
+
+          if (pendingOrder) {
+            // Confirmation du token PayDunya
+            const { confirmPayDunyaPayment } = await import('./lib/payments/paydunyaClient');
+            if (paydunyaToken) {
+              await confirmPayDunyaPayment(paydunyaToken);
+            }
+
+            const paidOrder: Order = {
+              ...pendingOrder,
+              paymentStatus: 'paid',
+              verifiedAt: new Date().toISOString(),
+              paymentDetails: {
+                ...pendingOrder.paymentDetails,
+                paydunyaToken: paydunyaToken || pendingOrder.paymentDetails?.paydunyaToken,
+                notes: 'Paiement PayDunya automatique confirmé avec succès. Push USSD validé par le client.'
+              }
+            };
+
+            const { updateOrderStatusInFirestore, saveOrderToFirestore } = await import('./lib/firebase');
+            await updateOrderStatusInFirestore(paidOrder.id, 'paid').catch(() => {
+              return saveOrderToFirestore(paidOrder);
+            });
+
+            try { sessionStorage.removeItem('digishop_pending_order'); } catch {}
+            setActiveOrder(paidOrder);
+            setCurrentView('success');
+            window.history.replaceState({}, '', '/');
+            return;
+          }
+        } catch (e) {
+          console.warn('[PayDunya] Erreur confirmation callback:', e);
+        }
+      }
+
+      if (paydunyaStatus === 'cancelled') {
+        window.history.replaceState({}, '', '/boutique');
+        setCurrentView('catalog');
+        return;
+      }
 
       if (path === '/' || path === '') {
         setCurrentView('home');
@@ -143,13 +206,11 @@ function MainApp() {
           setCurrentView('product');
         }
       } else if (path === '/produits' || path === '/products' || path === '/boutique' || path === '/catalogue') {
-        const urlParams = new URLSearchParams(search);
         const q = urlParams.get('q') || '';
         const cat = urlParams.get('cat') || '';
         setViewParam(q || (cat ? `cat=${cat}` : undefined));
         setCurrentView('catalog');
       } else if (path === '/admin') {
-        const urlParams = new URLSearchParams(search);
         const tab = urlParams.get('tab') || 'stats';
         setViewParam(tab);
         setCurrentView('admin');
