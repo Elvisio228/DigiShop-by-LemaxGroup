@@ -67,7 +67,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, []);
 
   const subtotal = useMemo(() => {
-    return cart.reduce((sum, item) => sum + item.price, 0);
+    return cart.reduce((sum, item) => sum + (parseFloat(String(item?.price)) || 0), 0);
   }, [cart]);
 
   const total = useMemo(() => {

@@ -47,7 +47,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
   // Calcul dynamique et fiable du sous-total et du total basé sur checkoutItems (fonctionne en Achat Direct 1-clic ET avec Panier)
   const subtotal = React.useMemo(() => {
-    return checkoutItems.reduce((sum, item) => sum + (Number(item?.price) || 0), 0);
+    return checkoutItems.reduce((sum, item) => sum + (parseFloat(String(item?.price)) || 0), 0);
   }, [checkoutItems]);
 
   const discountAmount = React.useMemo(() => {

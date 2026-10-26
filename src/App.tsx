@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { ToastProvider } from './context/ToastContext';
-import { CartProvider } from './context/CartContext';
+import { CartProvider, useCart } from './context/CartContext';
 import { CurrencyProvider } from './context/CurrencyContext';
 import { Navbar } from './components/Navbar';
 import { Footer } from './components/Footer';
@@ -31,6 +31,7 @@ import { ShieldCheck } from 'lucide-react';
 
 function MainApp() {
   const { user, isAdmin, loginAsAdminDemo } = useAuth();
+  const { addToCart } = useCart();
   const [currentView, setCurrentView] = useState<string>('home');
   const [viewParam, setViewParam] = useState<string | undefined>(undefined);
   const [products, setProducts] = useState<Product[]>(() => {
@@ -45,7 +46,14 @@ function MainApp() {
   });
   const [selectedProductSlug, setSelectedProductSlug] = useState<string | null>(null);
   const [activeOrder, setActiveOrder] = useState<Order | null>(null);
-  const [checkoutDirectItem, setCheckoutDirectItem] = useState<Product | null>(null);
+  const [checkoutDirectItem, setCheckoutDirectItem] = useState<Product | null>(() => {
+    try {
+      const saved = sessionStorage.getItem('digishop_direct_checkout');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
 
   // Auth modal state
   const [authModalOpen, setAuthModalOpen] = useState(false);
@@ -239,12 +247,19 @@ function MainApp() {
   };
 
   const handleBuyNow = (product: Product) => {
+    try {
+      sessionStorage.setItem('digishop_direct_checkout', JSON.stringify(product));
+    } catch {}
     setCheckoutDirectItem(product);
+    addToCart(product);
     navigate('checkout');
   };
 
   const handleOrderCompleted = (order: Order) => {
     setActiveOrder(order);
+    try {
+      sessionStorage.removeItem('digishop_direct_checkout');
+    } catch {}
     setCheckoutDirectItem(null);
     setCurrentView('success');
   };
