@@ -7,6 +7,7 @@ import { useAuth } from '../context/AuthContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { ProductCard } from '../components/ProductCard';
 import { AdBanner } from '../components/AdBanner';
+import { getProductImageUrl, handleImageFallback } from '../lib/imageUtils';
 
 interface ProductDetailViewProps {
   slug: string;
@@ -198,7 +199,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
               src={getProductImageUrl(product.image, product.category, product.title)}
               alt={product.title}
               className="w-full h-full object-cover"
-              onError={(e) => handleImageFallback(e, product.category)}
+              onError={(e) => handleImageFallback(e, product.category, product.title)}
             />
           </div>
 

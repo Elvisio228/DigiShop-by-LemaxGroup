@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" width="48" height="48" fill="none">
+  <defs>
+    <linearGradient id="badgeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0284c7" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#4f46e5" />
+    </linearGradient>
+    <linearGradient id="innerGlow" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="100%" stop-color="#a5b4fc" />
+    </linearGradient>
+  </defs>
+
+  <rect width="48" height="48" rx="14" fill="url(#badgeGrad)" />
+  
+  <!-- Isometric Digital Cube / Cart Symbol -->
+  <path d="M24 11L37 18.5V33.5L24 41L11 33.5V18.5L24 11Z" stroke="url(#innerGlow)" stroke-width="2.5" stroke-linejoin="round" fill="rgba(255,255,255,0.08)" />
+  <path d="M24 11V26" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+  <path d="M37 18.5L24 26" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+  <path d="M11 18.5L24 26" stroke="#ffffff" stroke-width="2" stroke-linecap="round" />
+  
+  <!-- Central pulse core -->
+  <circle cx="24" cy="26" r="3.5" fill="#38bdf8" />
+  <circle cx="24" cy="26" r="1.5" fill="#ffffff" />
+</svg>

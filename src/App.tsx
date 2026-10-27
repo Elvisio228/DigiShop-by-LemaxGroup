@@ -195,6 +195,42 @@ function MainApp() {
         return;
       }
 
+      // Détection automatique du retour de paiement PayPal
+      const paypalResult = urlParams.get('paypal_result');
+      const paypalOrder = urlParams.get('order') || urlParams.get('order_id');
+      const paypalToken = urlParams.get('token');
+
+      if (paypalResult === 'success' && (paypalOrder || paypalToken)) {
+        try {
+          const { safeFetchJson } = await import('./lib/apiClient');
+          const ref = paypalOrder || paypalToken || '';
+          const verifyRes = await safeFetchJson<{ isPaid: boolean; status: string; order: Order }>(
+            `/api/payments/paypal/verify/${encodeURIComponent(ref)}`
+          );
+
+          if (verifyRes.ok && verifyRes.data && (verifyRes.data.isPaid || verifyRes.data.order?.paymentStatus === 'paid')) {
+            const confirmedOrder = verifyRes.data.order;
+            try {
+              const { updateOrderStatusInFirestore, saveOrderToFirestore } = await import('./lib/firebase');
+              await updateOrderStatusInFirestore(confirmedOrder.id, 'paid').catch(() => saveOrderToFirestore(confirmedOrder));
+            } catch {}
+            try { sessionStorage.removeItem('digishop_pending_order'); } catch {}
+            setActiveOrder(confirmedOrder);
+            setCurrentView('success');
+            window.history.replaceState({}, '', '/');
+            return;
+          }
+        } catch (ppErr) {
+          console.warn('[PayPal] Erreur vérification callback:', ppErr);
+        }
+      }
+
+      if (paypalResult === 'cancelled') {
+        window.history.replaceState({}, '', '/boutique');
+        setCurrentView('catalog');
+        return;
+      }
+
       if (path === '/' || path === '') {
         setCurrentView('home');
       } else if (path.startsWith('/produits/')) {

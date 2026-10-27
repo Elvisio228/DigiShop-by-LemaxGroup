@@ -30,7 +30,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect, onB
           referrerPolicy="no-referrer"
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => handleImageFallback(e, product.category)}
+          onError={(e) => handleImageFallback(e, product.category, product.title)}
         />
         {/* Fallback container */}
         <div className="hidden w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 items-center justify-center p-4 text-center text-white">

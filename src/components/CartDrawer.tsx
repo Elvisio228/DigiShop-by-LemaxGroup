@@ -116,7 +116,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                     src={getProductImageUrl(item.image, item.category, item.title)}
                     alt={item.title}
                     className="w-16 h-16 rounded-lg object-cover bg-slate-200 shrink-0"
-                    onError={(e) => handleImageFallback(e, item.category)}
+                    onError={(e) => handleImageFallback(e, item.category, item.title)}
                   />
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>

@@ -3,6 +3,7 @@ import { Order } from '../types';
 import { CheckCircle2, Download, Clock, ShieldCheck, AlertCircle, ArrowRight, ExternalLink, RefreshCw, Lock, Zap, Smartphone, MessageCircle, HelpCircle } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { useAuth } from '../context/AuthContext';
 import { updateOrderStatusInFirestore, saveOrderToFirestore } from '../lib/firebase';
 import { getProductImageUrl, handleImageFallback } from '../lib/imageUtils';
 
@@ -14,6 +15,7 @@ interface OrderSuccessViewProps {
 export const OrderSuccessView: React.FC<OrderSuccessViewProps> = ({ order, onNavigate }) => {
   const { showToast } = useToast();
   const { formatPrice } = useCurrency();
+  const { isAdmin } = useAuth();
   const [currentOrder, setCurrentOrder] = useState<Order>(order);
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [validatingDirectly, setValidatingDirectly] = useState(false);
@@ -338,22 +340,24 @@ L'équipe Digishop by Lemax Group.
               <ExternalLink className="w-4 h-4 shrink-0" />
             </a>
 
-            {/* 5. BOUTON DE TEST ET DÉBLOCAGE IMMÉDIAT */}
-            <button
-              type="button"
-              onClick={handleInstantValidate}
-              disabled={validatingDirectly}
-              className="p-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-between shadow-sm transition-transform active:scale-[0.98] disabled:opacity-50"
-            >
-              <div className="flex items-center gap-2.5 text-left">
-                <Zap className="w-4 h-4 text-amber-300 shrink-0" />
-                <div>
-                  <span className="block font-bold">Valider & Débloquer Immédiatement</span>
-                  <span className="block text-[10px] opacity-90">Pour tester le téléchargement tout de suite sans attendre</span>
+            {/* 5. BOUTON DE TEST ET DÉBLOCAGE IMMÉDIAT (RÉSERVÉ ADMINISTRATEUR) */}
+            {isAdmin && (
+              <button
+                type="button"
+                onClick={handleInstantValidate}
+                disabled={validatingDirectly}
+                className="p-3.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs flex items-center justify-between shadow-sm transition-transform active:scale-[0.98] disabled:opacity-50"
+              >
+                <div className="flex items-center gap-2.5 text-left">
+                  <Zap className="w-4 h-4 text-amber-300 shrink-0" />
+                  <div>
+                    <span className="block font-bold">Valider & Débloquer Immédiatement (Admin)</span>
+                    <span className="block text-[10px] opacity-90">Mode administrateur pour tester le téléchargement</span>
+                  </div>
                 </div>
-              </div>
-              <span className="text-[10px] font-mono bg-blue-700 px-2 py-0.5 rounded">1-Clic</span>
-            </button>
+                <span className="text-[10px] font-mono bg-blue-700 px-2 py-0.5 rounded">Admin 1-Clic</span>
+              </button>
+            )}
           </div>
 
           {/* Guide explicatif sur la confirmation USSD */}
@@ -419,7 +423,7 @@ L'équipe Digishop by Lemax Group.
                   src={getProductImageUrl(item.image, item.categoryLabel, item.title)}
                   alt={item.title}
                   className="w-14 h-14 rounded-lg object-cover bg-slate-200 shrink-0"
-                  onError={(e) => handleImageFallback(e, item.categoryLabel)}
+                  onError={(e) => handleImageFallback(e, item.categoryLabel, item.title)}
                 />
                 <div className="space-y-1">
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">

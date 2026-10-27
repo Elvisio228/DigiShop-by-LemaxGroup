@@ -7,7 +7,7 @@ import { db, verifyToken, createToken, verifyPassword } from './src/server/datab
 import { DIGITAL_VAULT_FILES } from './src/server/digitalVault.ts';
 import type { Product, PaymentMethod, Order } from './src/types.ts';
 import { paydunyaService } from './src/lib/payments/paydunya.ts';
-import { createPayPalOrder, PAYPAL_CONFIG, updatePayPalConfig, getPayPalConfig, verifyPayPalIPN } from './src/lib/payments/paypal.ts';
+import { createPayPalOrder, capturePayPalOrder, verifyPayPalOrder, PAYPAL_CONFIG, updatePayPalConfig, getPayPalConfig, verifyPayPalIPN } from './src/lib/payments/paypal.ts';
 import nodemailer from 'nodemailer';
 
 const app = express();
@@ -514,8 +514,8 @@ app.post('/api/orders', optionalAuth, (req, res) => {
       // Processed securely through simulated PCI-DSS gateway
       paymentStatus = 'paid';
     } else if (paymentMethod === 'paypal') {
-      // In production, would capture PayPal order with client credentials
-      paymentStatus = 'paid';
+      // In production, PayPal payments are strictly pending_payment until verified via capture API or Webhook
+      paymentStatus = 'pending_payment';
     } else if (paymentMethod === 'paydunya') {
       // PayDunya: if invoice was confirmed/completed by PayDunya token
       if (paymentDetails && paymentDetails.paydunyaToken) {
@@ -736,26 +736,180 @@ app.get('/api/ipn/paydunya', (_req, res) => {
 app.post('/api/payments/paypal/create-order', async (req, res) => {
   try {
     const { orderNumber, amount, currency, customerEmail } = req.body;
+    if (!orderNumber || !amount) {
+      return res.status(400).json({ success: false, error: 'Numéro de commande et montant requis.' });
+    }
+
+    const host = req.get('host') || 'localhost:3000';
+    const protocol = req.protocol === 'https' || req.get('x-forwarded-proto') === 'https' ? 'https' : 'http';
+    const baseUrl = `${protocol}://${host}`;
+
+    const returnUrl = `${baseUrl}/api/payments/paypal/return?orderNumber=${encodeURIComponent(orderNumber)}`;
+    const cancelUrl = `${baseUrl}/api/payments/paypal/cancel?orderNumber=${encodeURIComponent(orderNumber)}`;
+
     const paypalOrder = await createPayPalOrder({
       orderNumber,
       amount: parseFloat(amount),
       currency: currency || 'EUR',
-      customerEmail
+      customerEmail: customerEmail || '',
+      returnUrl,
+      cancelUrl
     });
+
+    if (!paypalOrder.success && paypalOrder.error) {
+      return res.status(400).json(paypalOrder);
+    }
 
     const order = db.getOrderByPaymentRef(orderNumber);
     if (order && paypalOrder.id) {
       order.paymentDetails = {
         ...order.paymentDetails,
-        paypalOrderId: paypalOrder.id
+        paypalOrderId: paypalOrder.id,
+        paypalStatus: paypalOrder.status || 'CREATED'
       };
       db.save();
     }
 
     res.json(paypalOrder);
   } catch (err: any) {
-    res.status(500).json({ error: err.message || 'Erreur PayPal' });
+    res.status(500).json({ success: false, error: err.message || 'Erreur PayPal' });
   }
+});
+
+// PayPal Order Capture (Direct Server-to-Server)
+app.post('/api/payments/paypal/capture-order', async (req, res) => {
+  try {
+    const { orderNumber, paypalOrderId } = req.body;
+    if (!paypalOrderId) {
+      return res.status(400).json({ success: false, error: 'Identifiant de commande PayPal (paypalOrderId) requis.' });
+    }
+
+    console.log(`[PayPal Capture Request] OrderRef: ${orderNumber} | PayPal ID: ${paypalOrderId}`);
+    const captureResult = await capturePayPalOrder(paypalOrderId);
+    console.log('[PayPal Capture Result]:', captureResult);
+
+    if (captureResult.success && captureResult.status === 'COMPLETED') {
+      const ref = orderNumber || captureResult.orderNumber;
+      let order = ref ? (db.getOrderByPaymentRef(ref) || db.getOrderById(ref)) : undefined;
+
+      if (!order && paypalOrderId) {
+        order = db.getOrderByPaymentRef(paypalOrderId);
+      }
+
+      if (order) {
+        db.updateOrderStatus(order.id, 'paid', 'Capture Directe PayPal API');
+        order.ipnConfirmedAt = new Date().toISOString();
+        order.ipnProvider = 'PayPal Capture API';
+        order.paymentDetails = {
+          ...order.paymentDetails,
+          paypalOrderId,
+          paypalCaptureId: captureResult.captureId,
+          status: 'COMPLETED'
+        };
+        db.save();
+
+        db.addAdminLog(
+          'paypal-capture@system',
+          'Paiement PayPal Validé',
+          `Commande ${order.orderNumber} confirmée avec succès via l'API PayPal (Capture: ${captureResult.captureId || paypalOrderId}). Téléchargements débloqués pour ${order.customerEmail}.`
+        );
+
+        return res.json({
+          success: true,
+          status: 'COMPLETED',
+          message: 'Paiement PayPal vérifié et capturé avec succès. Vos fichiers sont débloqués.',
+          captureId: captureResult.captureId,
+          order
+        });
+      }
+
+      return res.json({
+        success: true,
+        status: 'COMPLETED',
+        captureId: captureResult.captureId,
+        message: 'Paiement validé par PayPal.'
+      });
+    }
+
+    return res.status(400).json({
+      success: false,
+      status: captureResult.status,
+      error: captureResult.error || 'La capture PayPal n\'a pas pu être validée par les serveurs PayPal.'
+    });
+  } catch (err: any) {
+    console.error('[PayPal Capture Error]:', err);
+    res.status(500).json({ success: false, error: err.message || 'Erreur lors de la capture PayPal.' });
+  }
+});
+
+// Check order status with PayPal directly
+app.get('/api/payments/paypal/verify/:orderNumber', async (req, res) => {
+  try {
+    const { orderNumber } = req.params;
+    const order = db.getOrderByPaymentRef(orderNumber) || db.getOrderById(orderNumber);
+    if (!order) return res.status(404).json({ error: 'Commande introuvable.' });
+
+    if (order.paymentStatus === 'paid') {
+      return res.json({ isPaid: true, status: 'COMPLETED', order });
+    }
+
+    const ppId = order.paymentDetails?.paypalOrderId;
+    if (ppId) {
+      const verifyResult = await verifyPayPalOrder(ppId);
+      if (verifyResult.isPaid) {
+        db.updateOrderStatus(order.id, 'paid', 'Vérification PayPal API');
+        order.ipnConfirmedAt = new Date().toISOString();
+        order.ipnProvider = 'PayPal Order Verification';
+        db.save();
+        return res.json({ isPaid: true, status: 'COMPLETED', order });
+      }
+      return res.json({ isPaid: false, status: verifyResult.status, order });
+    }
+
+    res.json({ isPaid: false, status: order.paymentStatus, order });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Hosted PayPal Checkout Return URL
+app.get('/api/payments/paypal/return', async (req, res) => {
+  try {
+    const token = (req.query.token || '').toString();
+    const orderNumber = (req.query.orderNumber || '').toString();
+
+    console.log(`[PayPal Hosted Return] Token/Order: ${token} | Ref: ${orderNumber}`);
+    if (token) {
+      const captureResult = await capturePayPalOrder(token);
+      if (captureResult.success && captureResult.status === 'COMPLETED') {
+        const ref = orderNumber || captureResult.orderNumber;
+        const order = ref ? (db.getOrderByPaymentRef(ref) || db.getOrderById(ref)) : undefined;
+        if (order) {
+          db.updateOrderStatus(order.id, 'paid', 'PayPal Return Capture');
+          order.ipnConfirmedAt = new Date().toISOString();
+          order.ipnProvider = 'PayPal Hosted Return';
+          order.paymentDetails = {
+            ...order.paymentDetails,
+            paypalOrderId: token,
+            paypalCaptureId: captureResult.captureId,
+            status: 'COMPLETED'
+          };
+          db.save();
+        }
+        return res.redirect(`/?paypal_result=success&order=${encodeURIComponent(orderNumber || '')}&token=${encodeURIComponent(token)}`);
+      }
+    }
+    return res.redirect(`/?paypal_result=pending&order=${encodeURIComponent(orderNumber || '')}`);
+  } catch (err) {
+    console.error('[PayPal Return Error]:', err);
+    return res.redirect('/?paypal_result=error');
+  }
+});
+
+// Hosted PayPal Checkout Cancel URL
+app.get('/api/payments/paypal/cancel', (req, res) => {
+  const orderNumber = (req.query.orderNumber || '').toString();
+  res.redirect(`/?paypal_result=cancelled&order=${encodeURIComponent(orderNumber)}`);
 });
 
 // --- IPN ENDPOINT: PAYPAL (Instant Payment Notification / Webhook) ---
@@ -771,21 +925,23 @@ const handlePayPalIPN = async (req: Request, res: Response) => {
     if (verification.valid || status === 'completed' || body?.event_type === 'PAYMENT.CAPTURE.COMPLETED') {
       const order = orderRef ? (db.getOrderByPaymentRef(orderRef) || db.getOrderById(orderRef)) : undefined;
       if (order) {
-        db.updateOrderStatus(order.id, 'paid', 'Notification IPN PayPal');
+        db.updateOrderStatus(order.id, 'paid', 'Notification IPN/Webhook PayPal');
         order.ipnConfirmedAt = new Date().toISOString();
         order.ipnProvider = 'PayPal Webhook';
         if (verification.txnId) {
           order.paymentDetails = {
             ...order.paymentDetails,
-            paypalOrderId: verification.txnId
+            paypalOrderId: verification.txnId,
+            paypalCaptureId: verification.txnId,
+            status: 'COMPLETED'
           };
         }
         db.save();
 
         db.addAdminLog(
           'paypal-ipn@system',
-          'IPN PayPal Validé',
-          `Commande ${order.orderNumber} confirmée via IPN PayPal (${verification.txnId || 'Transaction'}). Fichiers débloqués pour ${order.customerEmail}.`
+          'IPN/Webhook PayPal Validé',
+          `Commande ${order.orderNumber} confirmée via Webhook PayPal (${verification.txnId || 'Transaction'}). Fichiers débloqués pour ${order.customerEmail}.`
         );
 
         return res.status(200).send('IPN VERIFIED');

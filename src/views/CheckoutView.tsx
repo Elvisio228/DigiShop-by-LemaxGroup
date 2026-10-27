@@ -258,12 +258,37 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           notes: `Paiement Carte ${cardType.toUpperCase()} (terminant par ${last4}) - 3D-Secure certifié PCI-DSS`
         };
       } else if (paymentMethod === 'paypal') {
+        const randOrderNum = `DS-${Math.floor(100000 + Math.random() * 900000)}`;
+        const { safeFetchJson } = await import('../lib/apiClient');
+        
+        // Création stricte de la commande PayPal sur l'API officielle PayPal v2
+        const paypalOrderRes = await safeFetchJson<any>('/api/payments/paypal/create-order', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            orderNumber: randOrderNum,
+            amount: total,
+            currency: 'EUR',
+            customerEmail: email
+          })
+        });
+
+        if (!paypalOrderRes.ok || !paypalOrderRes.data || !paypalOrderRes.data.success) {
+          const errDetail = paypalOrderRes.data?.error || paypalOrderRes.error || "Impossible d'initialiser PayPal";
+          showToast(`Erreur PayPal : ${errDetail}`, 'error');
+          setLoading(false);
+          return;
+        }
+
+        const ppData = paypalOrderRes.data;
         paymentDetails = {
-          paypalOrderId: `PAYPAL-ORD-${Date.now()}`,
+          gateway: 'paypal',
+          paypalOrderId: ppData.id,
           payerEmail: paypalPayerEmail || email,
-          merchantAccount: paypalConfig.merchantEmail || 'lemaxshop01@gmail.com',
-          clientId: paypalConfig.clientId || '',
-          status: 'COMPLETED'
+          merchantAccount: ppData.merchant || paypalConfig.merchantEmail,
+          status: ppData.status || 'CREATED',
+          mode: ppData.mode,
+          approveUrl: ppData.approveUrl
         };
       } else if (paymentMethod === 'moov') {
         if (!moovTxRef.trim()) {
@@ -380,7 +405,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
         const randId = Math.random().toString(36).substring(2, 8);
         const orderNum = 'DS-' + Math.floor(100000 + Math.random() * 900000);
         const dlToken = 'dl_' + Math.random().toString(36).substring(2) + Date.now().toString(36);
-        const isPaid = paymentMethod === 'paypal';
+        const isPaid = paymentMethod === 'card';
         const expDate = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
 
         orderData = {
@@ -394,7 +419,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           discountAmount: orderPayload.discountAmount,
           totalAmount: orderPayload.totalAmount,
           couponCode: orderPayload.couponCode,
-          paymentStatus: isPaid ? 'paid' : 'pending',
+          paymentStatus: isPaid ? 'paid' : 'pending_payment',
           paymentMethod: orderPayload.paymentMethod,
           paymentDetails: orderPayload.paymentDetails,
           downloadToken: dlToken,
@@ -422,6 +447,19 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
         showToast('Ouverture sécurisée de PayDunya... Déclenchement de la confirmation sur votre portable.', 'info');
         setTimeout(() => {
           window.location.href = paymentDetails.paydunyaInvoiceUrl;
+        }, 300);
+        return;
+      }
+
+      // Si paiement PayPal, redirection immédiate vers le portail officiel de paiement PayPal
+      if (paymentMethod === 'paypal' && paymentDetails?.approveUrl) {
+        try {
+          sessionStorage.setItem('digishop_pending_order', JSON.stringify(orderData));
+        } catch {}
+        clearCart();
+        showToast('Redirection vers le portail officiel sécurisé PayPal...', 'info');
+        setTimeout(() => {
+          window.location.href = paymentDetails.approveUrl;
         }, 300);
         return;
       }
@@ -837,20 +875,28 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                         <div className="pt-1 space-y-2">
                           <button
                             type="button"
-                            onClick={() => setShowPayPalModal(true)}
+                            onClick={() => {
+                              setPaymentMethod('paypal');
+                              setCurrentStep(3);
+                              window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                            }}
                             className="w-full py-2.5 px-4 rounded-xl bg-[#ffc439] hover:bg-[#f4bb34] text-[#003087] font-bold text-xs shadow-sm transition-all flex items-center justify-center gap-2 border border-[#f0b429]"
                           >
                             <span className="font-extrabold italic text-sm tracking-tighter">Pay<span className="text-[#0079C1]">Pal</span></span>
-                            <span className="text-slate-900 font-semibold">— Payer {formatPrice(total)} en 1 clic</span>
+                            <span className="text-slate-900 font-semibold">— Continuer vers PayPal ({formatPrice(total)})</span>
                           </button>
 
                           <button
                             type="button"
-                            onClick={() => setShowPayPalModal(true)}
+                            onClick={() => {
+                              setPaymentMethod('paypal');
+                              setCurrentStep(3);
+                              window.scrollTo({ top: 0, left: 0, behavior: 'smooth' });
+                            }}
                             className="w-full py-2 px-4 rounded-xl bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 text-white font-medium text-xs transition-colors flex items-center justify-center gap-2"
                           >
                             <CreditCard className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                            <span>Payer par Carte Bancaire via le portail PayPal</span>
+                            <span>Payer par Carte Bancaire ou Solde PayPal</span>
                           </button>
                         </div>
 
@@ -1389,9 +1435,11 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                   <Lock className="w-3.5 h-3.5" />
                   <span>
                     {loading
-                      ? 'Connexion sécurisée & Envoi du Push...'
+                      ? (paymentMethod === 'paypal' ? 'Connexion à PayPal...' : 'Connexion sécurisée...')
                       : paymentMethod === 'paydunya'
                       ? `⚡ Déclencher le paiement PayDunya (${formatPrice(total)})`
+                      : paymentMethod === 'paypal'
+                      ? `Payer ${formatPrice(total)} avec PayPal`
                       : `Confirmer et Régler ${formatPrice(total)}`}
                   </span>
                 </button>
@@ -1418,7 +1466,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                     src={getProductImageUrl(item.image, item.category, item.title)}
                     alt={item.title}
                     className="w-12 h-12 rounded-lg object-cover bg-slate-100"
-                    onError={(e) => handleImageFallback(e, item.category)}
+                    onError={(e) => handleImageFallback(e, item.category, item.title)}
                   />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900 dark:text-white truncate">{item.title}</p>
