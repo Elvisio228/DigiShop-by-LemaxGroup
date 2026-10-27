@@ -195,9 +195,10 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
         <div className="lg:col-span-7 space-y-4">
           <div className="rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-slate-100 dark:bg-slate-900 aspect-[4/3] shadow-md">
             <img
-              src={product.image}
+              src={getProductImageUrl(product.image, product.category, product.title)}
               alt={product.title}
               className="w-full h-full object-cover"
+              onError={(e) => handleImageFallback(e, product.category)}
             />
           </div>
 

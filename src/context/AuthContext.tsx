@@ -9,7 +9,6 @@ interface AuthContextType {
   isAdmin: boolean;
   login: (email: string, password: string) => Promise<User>;
   loginWithGoogle: () => Promise<User>;
-  loginAsAdminDemo: () => Promise<User>;
   register: (name: string, email: string, password: string, phone?: string) => Promise<User>;
   logout: () => void;
   refreshUser: () => Promise<void>;
@@ -17,7 +16,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const ADMIN_EMAILS = ['lemaxshop01@gmail.com', 'admin@digishop.com', 'elvisioleng@gmail.com'];
+const ADMIN_EMAILS = ['lemaxshop01@gmail.com', 'admin@digishop.com'];
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   // Initialize user from cached session to prevent flash of logged-out state
@@ -145,55 +144,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, []);
 
-  const loginAsAdminDemo = async (): Promise<User> => {
-    setIsLoading(true);
-    const adminUser: User = {
-      id: 'usr-admin-lemax',
-      name: 'Administrateur Lemax',
-      email: 'lemaxshop01@gmail.com',
-      role: 'admin',
-      phone: '+228 99 66 88 84',
-      createdAt: new Date().toISOString(),
-      ordersCount: 3,
-      totalSpent: 187.90
-    };
-    localStorage.setItem('digishop_token', adminUser.id);
-    localStorage.setItem('digishop_user_session', JSON.stringify(adminUser));
-    setToken(adminUser.id);
-    setUser(adminUser);
-    setIsLoading(false);
-    return adminUser;
-  };
-
   const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     const cleanEmail = email.trim().toLowerCase();
-
-    // Built-in Administrator Instant Authentication for serverless / static Firebase Hosting
-    const isDirectAdmin = (
-      (cleanEmail === 'lemaxshop01@gmail.com' && (password === 'admin' || password === 'lemax' || password === 'lemax2026' || password.length >= 4)) ||
-      (cleanEmail === 'admin@digishop.com' && (password === 'admin' || password === 'admin123' || password.length >= 4)) ||
-      (cleanEmail === 'elvisioleng@gmail.com' && (password === 'admin' || password.length >= 4))
-    );
-
-    if (isDirectAdmin) {
-      const adminUser: User = {
-        id: cleanEmail === 'lemaxshop01@gmail.com' ? 'usr-admin-lemax' : 'usr-admin-1',
-        name: cleanEmail === 'lemaxshop01@gmail.com' ? 'Administrateur Lemax' : 'Directeur Digishop',
-        email: cleanEmail,
-        role: 'admin',
-        phone: cleanEmail === 'lemaxshop01@gmail.com' ? '+228 99 66 88 84' : '+33 6 12 34 56 78',
-        createdAt: new Date().toISOString(),
-        ordersCount: 3,
-        totalSpent: 187.90
-      };
-      localStorage.setItem('digishop_token', adminUser.id);
-      localStorage.setItem('digishop_user_session', JSON.stringify(adminUser));
-      setToken(adminUser.id);
-      setUser(adminUser);
-      setIsLoading(false);
-      return adminUser;
-    }
 
     try {
       // 1. Try Firebase Authentication (Serverless & production-ready for Firebase Hosting)
@@ -231,14 +184,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return apiRes.data.user;
       }
 
-      // 3. Fallback to built-in db.json accounts
+      // 3. Fallback for offline demo customer accounts (non-admin)
       const matchedUser = (defaultDb.users as any[])?.find(u => u.email.toLowerCase().trim() === cleanEmail);
-      if (matchedUser) {
+      if (matchedUser && matchedUser.role !== 'admin') {
         const userObj: User = {
           id: matchedUser.id,
           name: matchedUser.name,
           email: matchedUser.email,
-          role: matchedUser.role as any,
+          role: 'customer',
           phone: matchedUser.phone,
           createdAt: matchedUser.createdAt,
           ordersCount: matchedUser.ordersCount || 0,
@@ -251,7 +204,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return userObj;
       }
 
-      throw new Error('Adresse e-mail ou mot de passe introuvable. Utilisez le bouton "Connexion Administrateur Immédiate" ou Google.');
+      throw new Error('Adresse e-mail ou mot de passe incorrect. Vous pouvez vous connecter avec Google ou réinitialiser votre mot de passe.');
     } finally {
       setIsLoading(false);
     }
@@ -361,7 +314,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isAdmin,
         login,
         loginWithGoogle,
-        loginAsAdminDemo,
         register,
         logout,
         refreshUser

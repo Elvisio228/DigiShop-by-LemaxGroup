@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import { PhoneInputWithCountry } from './PhoneInputWithCountry';
 
-const ADMIN_EMAILS = ['lemaxshop01@gmail.com', 'admin@digishop.com', 'elvisioleng@gmail.com'];
+const ADMIN_EMAILS = ['lemaxshop01@gmail.com', 'admin@digishop.com'];
 
 interface AuthModalProps {
   isOpen: boolean;
@@ -21,32 +21,13 @@ export const AuthModal: React.FC<AuthModalProps> = ({
   onSuccess,
   onNavigate
 }) => {
-  const { login, register, loginWithGoogle, loginAsAdminDemo } = useAuth();
+  const { login, register, loginWithGoogle } = useAuth();
   const { showToast } = useToast();
   const [mode, setMode] = useState<'login' | 'register' | 'forgot'>(initialMode);
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
-
-  const handleAdminQuickLogin = async () => {
-    setError(null);
-    setLoading(true);
-    try {
-      await loginAsAdminDemo();
-      showToast('Bienvenue dans votre espace Administrateur Lemax Group !', 'success');
-      onClose();
-      if (onNavigate) {
-        onNavigate('admin', 'stats');
-      } else if (onSuccess) {
-        onSuccess();
-      }
-    } catch (err: any) {
-      setError(err.message || 'Erreur lors de la connexion admin');
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleGoogleSignIn = async () => {
     setError(null);
@@ -543,18 +524,6 @@ export const AuthModal: React.FC<AuthModalProps> = ({
               </span>
               <ArrowRight className="w-3.5 h-3.5" />
             </button>
-
-            {/* Accès Rapide Administrateur en 1 Clic (Idéal sur Smartphone) */}
-            <div className="pt-2">
-              <button
-                type="button"
-                onClick={handleAdminQuickLogin}
-                disabled={loading || googleLoading}
-                className="w-full py-2.5 px-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200/80 dark:border-amber-800 text-amber-800 dark:text-amber-300 font-bold text-xs flex items-center justify-center gap-2 hover:bg-amber-100 dark:hover:bg-amber-900/50 transition-colors shadow-xs"
-              >
-                <span>👑 Connexion Administrateur Immédiate (1 clic)</span>
-              </button>
-            </div>
           </form>
         )}
 

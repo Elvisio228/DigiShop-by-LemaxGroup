@@ -3,6 +3,7 @@ import { Product } from '../types';
 import { Star, Download, ShoppingBag, ArrowUpRight } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { getProductImageUrl, handleImageFallback } from '../lib/imageUtils';
 
 interface ProductCardProps {
   product: Product;
@@ -24,17 +25,12 @@ export const ProductCard: React.FC<ProductCardProps> = ({ product, onSelect, onB
         className="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 dark:bg-slate-800 cursor-pointer"
       >
         <img
-          src={product.image}
+          src={getProductImageUrl(product.image, product.category, product.title)}
           alt={product.title}
           referrerPolicy="no-referrer"
           loading="lazy"
           className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
-          onError={(e) => {
-            const target = e.currentTarget;
-            target.style.display = 'none';
-            const fallback = target.nextElementSibling as HTMLElement;
-            if (fallback) fallback.style.display = 'flex';
-          }}
+          onError={(e) => handleImageFallback(e, product.category)}
         />
         {/* Fallback container */}
         <div className="hidden w-full h-full bg-gradient-to-br from-slate-800 to-slate-900 items-center justify-center p-4 text-center text-white">

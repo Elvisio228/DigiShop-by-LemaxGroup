@@ -27,6 +27,7 @@ import {
 } from 'firebase/firestore';
 import firebaseConfig from '../../firebase-applet-config.json';
 import { Product, Order, Coupon, Review, Advertisement, User } from '../types';
+import { getProductImageUrl } from './imageUtils';
 
 const app = initializeApp(firebaseConfig);
 
@@ -111,6 +112,7 @@ export async function syncProductsWithFirestore(fallbackProducts: Product[]): Pr
       snap.forEach(d => {
         const item = d.data() as Product;
         if (item && item.id && item.title) {
+          item.image = getProductImageUrl(item.image, item.category, item.title);
           items.push(item);
         }
       });
@@ -148,7 +150,8 @@ export async function getAllProductsFromFirestore(fallbackProducts?: Product[]):
         if (item && item.title) {
           items.push({
             ...item,
-            id: item.id || d.id
+            id: item.id || d.id,
+            image: getProductImageUrl(item.image, item.category, item.title)
           });
         }
       });
@@ -276,7 +279,7 @@ export async function registerWithEmailPassword(name: string, email: string, pas
       await updateProfile(cred.user, { displayName: cleanName });
     } catch {}
   }
-  const isAdmin = cleanEmail === 'lemaxshop01@gmail.com' || cleanEmail === 'admin@digishop.com' || cleanEmail === 'elvisioleng@gmail.com';
+  const isAdmin = cleanEmail === 'lemaxshop01@gmail.com' || cleanEmail === 'admin@digishop.com';
   const newUser: User = {
     id: cred.user.uid,
     name: cleanName || cleanEmail.split('@')[0],
@@ -318,7 +321,7 @@ export async function loginWithEmailPassword(email: string, password: string): P
   const userDoc = await getUserFromFirestore(cred.user.uid);
   if (userDoc) return userDoc;
 
-  const isAdmin = cleanEmail === 'lemaxshop01@gmail.com' || cleanEmail === 'admin@digishop.com' || cleanEmail === 'elvisioleng@gmail.com';
+  const isAdmin = cleanEmail === 'lemaxshop01@gmail.com' || cleanEmail === 'admin@digishop.com';
   const fallbackUser: User = {
     id: cred.user.uid,
     name: cred.user.displayName || cleanEmail.split('@')[0],

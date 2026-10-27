@@ -67,7 +67,7 @@
       "shortDescription": "Stratégies concrètes, tunnels de conversion et acquisition payante & organique pour propulser votre marque.",
       "title": "Guide Ultime du Marketing Digital & Croissance",
       "reviewsCount": 88,
-      "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+      "image": "/assets/images/product_ebook_marketing_1791461314730.jpg",
       "id": "prod-1",
       "rating": 4.9,
       "downloadsCount": 1425,
@@ -96,10 +96,10 @@
         "Téléchargement direct"
       ],
       "title": "Logo",
-      "categoryLabel": "E-books",
+      "categoryLabel": "Ressources graphiques",
       "isPromo": false,
-      "image": "/uploads/product_1792585262702_qt6ly.png",
-      "category": "ebooks",
+      "image": "/assets/images/product_graphics_3d_icons_1791461343514.jpg",
+      "category": "graphisme",
       "isFeatured": true,
       "originalPrice": 1,
       "slug": "logo",
@@ -141,7 +141,7 @@
       "createdAt": "2026-10-23T11:46:57.101Z",
       "isFeatured": true,
       "category": "ebooks",
-      "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+      "image": "/assets/images/product_ebook_marketing_1791461314730.jpg",
       "fullDescription": "Lkjkkullnll",
       "fileDetails": {
         "fileFormat": "PDF",
@@ -189,7 +189,7 @@
         "Startup",
         "Excel"
       ],
-      "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+      "image": "/assets/images/product_template_business_1791461332483.jpg",
       "originalPrice": 79,
       "id": "prod-2"
     },
@@ -224,7 +224,7 @@
       ],
       "createdAt": "2026-01-20T12:00:00Z",
       "id": "prod-3",
-      "image": "/src/assets/images/product_graphics_3d_icons_1791461343514.jpg",
+      "image": "/assets/images/product_graphics_3d_icons_1791461343514.jpg",
       "downloadsCount": 1650,
       "category": "graphisme",
       "slug": "pack-3d-icons-ui-assets",
@@ -247,7 +247,7 @@
         "Méthodes de conversion e-commerce testées sur 500k€+ de volume",
         "Accès communautaire privé des apprenants"
       ],
-      "image": "/src/assets/images/product_course_ecommerce_1791461354436.jpg",
+      "image": "/assets/images/product_course_ecommerce_1791461354436.jpg",
       "slug": "masterclass-ecommerce-scaling",
       "status": "published",
       "downloadsCount": 741,
@@ -281,7 +281,7 @@
     {
       "isFeatured": false,
       "createdAt": "2026-01-10T14:00:00Z",
-      "image": "/src/assets/images/hero_digishop_showcase_1791461301216.jpg",
+      "image": "/assets/images/hero_digishop_showcase_1791461301216.jpg",
       "tags": [
         "Juridique",
         "Contrats",
@@ -357,7 +357,7 @@
       "reviewsCount": 145,
       "slug": "templates-cv-professionnels",
       "licenseType": "Licence Standard",
-      "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+      "image": "/assets/images/product_template_business_1791461332483.jpg",
       "fullDescription": "Maximisez vos chances d'embauche avec des templates de CV modernes conçus pour passer les filtres logiciels de recrutement (ATS) tout en séduisant les recruteurs humains en moins de 6 secondes.\n\nInclus dans le kit :\n- 15 templates de CV 1 page et 2 pages.\n- Modèles de lettres de motivation assortis.\n- Compatibles Word, Pages, Canva et Google Docs.\n- Guide des 50 verbes d'action pour décupler la portée de vos réalisations.",
       "originalPrice": 29.9,
       "isPromo": false,
@@ -398,7 +398,7 @@
       ],
       "updatedAt": "2026-03-22T14:00:00Z",
       "slug": "guide-canva-creation-contenu",
-      "image": "/src/assets/images/product_ebook_marketing_1791461314730.jpg",
+      "image": "/assets/images/product_ebook_marketing_1791461314730.jpg",
       "isRecommended": false,
       "reviewsCount": 42,
       "categoryLabel": "E-books",
@@ -409,7 +409,7 @@
     {
       "createdAt": "2026-01-18T16:00:00Z",
       "isFeatured": false,
-      "image": "/src/assets/images/product_template_business_1791461332483.jpg",
+      "image": "/assets/images/product_template_business_1791461332483.jpg",
       "licenseType": "Licence Commerciale",
       "tags": [
         "Facturation",
@@ -638,7 +638,7 @@
       "paymentDetails": {
         "paypalOrderId": "PAYPAL-ORD-1791633750817",
         "payerEmail": "marckocobis02@gmail.com",
-        "merchantAccount": "elvisiolengbis@gmail.com"
+        "merchantAccount": "lemaxshop01@gmail.com"
       },
       "id": "ord-1791633751196-16a0e1",
       "orderNumber": "DS-2026-1008",
@@ -807,7 +807,7 @@
       "paymentDetails": {
         "paypalOrderId": "PAYPAL-ORD-1791625821276",
         "payerEmail": "marckocobis02@gmail.com",
-        "merchantAccount": "elvisiolengbis@gmail.com"
+        "merchantAccount": "lemaxshop01@gmail.com"
       },
       "id": "ord-1791625822577-fad308",
       "orderNumber": "DS-2026-1004",

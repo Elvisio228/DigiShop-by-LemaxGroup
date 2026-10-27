@@ -1,6 +1,6 @@
 /**
  * Module d'Intégration PayPal pour Digishop
- * Compte marchand officiel : elvisiolengbis@gmail.com
+ * Compte marchand officiel : lemaxshop01@gmail.com
  */
 
 import fs from 'fs';
@@ -21,15 +21,15 @@ export interface PayPalConfigData {
 const CONFIG_FILE = path.resolve(process.cwd(), 'data', 'paypal-config.json');
 
 const DEFAULT_SANDBOX: PayPalCredentials = {
-  clientId: 'AdA8Fsqec274Keo-P9w4GNveax7Kqh8WwG1F9VS1ngDHtJ6-eT9GX8x3mihR686vimEy5OYMW3xddEZ_',
-  clientSecret: 'EDJMWKMRMJ_ASLeJJMHdlOHfjatkCg6RVWq8mOAUODj_-sMDfKMXss8gkN18kXX0Uf_s2ASSSIgbowGn',
-  merchantEmail: 'elvisiolengbis@gmail.com'
+  clientId: process.env.PAYPAL_SANDBOX_CLIENT_ID || '',
+  clientSecret: process.env.PAYPAL_SANDBOX_CLIENT_SECRET || '',
+  merchantEmail: 'lemaxshop01@gmail.com'
 };
 
 const DEFAULT_LIVE: PayPalCredentials = {
-  clientId: '',
-  clientSecret: '',
-  merchantEmail: 'elvisiolengbis@gmail.com'
+  clientId: process.env.PAYPAL_CLIENT_ID || '',
+  clientSecret: process.env.PAYPAL_CLIENT_SECRET || '',
+  merchantEmail: 'lemaxshop01@gmail.com'
 };
 
 function loadPayPalConfig(): PayPalConfigData {
@@ -39,7 +39,7 @@ function loadPayPalConfig(): PayPalConfigData {
       const parsed = JSON.parse(raw);
       if (parsed.sandbox && parsed.live) {
         return {
-          mode: parsed.mode || 'sandbox',
+          mode: parsed.mode || 'live',
           sandbox: {
             clientId: parsed.sandbox.clientId ?? DEFAULT_SANDBOX.clientId,
             clientSecret: parsed.sandbox.clientSecret ?? DEFAULT_SANDBOX.clientSecret,
@@ -58,12 +58,12 @@ function loadPayPalConfig(): PayPalConfigData {
   }
 
   return {
-    mode: (process.env.PAYPAL_MODE as 'sandbox' | 'live') || 'sandbox',
+    mode: (process.env.PAYPAL_MODE as 'sandbox' | 'live') || 'live',
     sandbox: { ...DEFAULT_SANDBOX },
     live: {
       clientId: process.env.PAYPAL_CLIENT_ID || '',
       clientSecret: process.env.PAYPAL_CLIENT_SECRET || '',
-      merchantEmail: process.env.PAYPAL_MERCHANT_EMAIL || 'elvisiolengbis@gmail.com'
+      merchantEmail: process.env.PAYPAL_MERCHANT_EMAIL || 'lemaxshop01@gmail.com'
     }
   };
 }

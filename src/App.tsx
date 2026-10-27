@@ -30,7 +30,7 @@ import defaultDb from '../data/db.json';
 import { ShieldCheck } from 'lucide-react';
 
 function MainApp() {
-  const { user, isAdmin, loginAsAdminDemo } = useAuth();
+  const { user, isAdmin } = useAuth();
   const { addToCart } = useCart();
   const [currentView, setCurrentView] = useState<string>('home');
   const [viewParam, setViewParam] = useState<string | undefined>(undefined);
@@ -412,12 +412,11 @@ function MainApp() {
               <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-3">
                 <button
                   type="button"
-                  onClick={async () => {
-                    await loginAsAdminDemo();
-                  }}
-                  className="px-4 py-2.5 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5"
+                  onClick={() => handleOpenAuth('login')}
+                  className="px-4 py-2.5 text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition-colors flex items-center justify-center gap-1.5"
                 >
-                  <span>👑 Se connecter comme Administrateur (1 clic)</span>
+                  <ShieldCheck className="w-3.5 h-3.5" />
+                  <span>Se connecter comme Administrateur</span>
                 </button>
                 <button
                   type="button"

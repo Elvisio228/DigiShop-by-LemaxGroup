@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { X, Trash2, ArrowRight, ShoppingBag, Tag, Check, Download } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useCurrency } from '../context/CurrencyContext';
+import { getProductImageUrl, handleImageFallback } from '../lib/imageUtils';
 
 interface CartDrawerProps {
   onCheckout: () => void;
@@ -112,9 +113,10 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({ onCheckout }) => {
                   className="flex gap-3.5 p-3 rounded-xl border border-slate-200/80 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30"
                 >
                   <img
-                    src={item.image}
+                    src={getProductImageUrl(item.image, item.category, item.title)}
                     alt={item.title}
                     className="w-16 h-16 rounded-lg object-cover bg-slate-200 shrink-0"
+                    onError={(e) => handleImageFallback(e, item.category)}
                   />
                   <div className="flex-1 min-w-0 flex flex-col justify-between">
                     <div>

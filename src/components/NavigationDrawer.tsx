@@ -389,7 +389,18 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
             }}
             className="flex items-center gap-2.5 text-left focus:outline-none group min-w-0"
           >
-            <span className="w-8 h-8 rounded-lg bg-sky-500 text-white flex items-center justify-center font-display text-sm font-extrabold shadow-sm shadow-sky-500/20 shrink-0">
+            <img
+              src="/logo-icon.svg"
+              alt="Digishop Logo"
+              className="w-8 h-8 rounded-lg shadow-sm shadow-sky-500/20 shrink-0 object-contain"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                const fb = target.nextElementSibling as HTMLElement;
+                if (fb) fb.style.display = 'flex';
+              }}
+            />
+            <span className="hidden w-8 h-8 rounded-lg bg-sky-500 text-white items-center justify-center font-display text-sm font-extrabold shadow-sm shadow-sky-500/20 shrink-0">
               D
             </span>
             <div className="flex flex-col leading-none min-w-0">

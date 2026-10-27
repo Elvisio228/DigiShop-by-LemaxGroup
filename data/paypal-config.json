@@ -1,13 +1,13 @@
 {
-  "mode": "sandbox",
+  "mode": "live",
   "sandbox": {
-    "clientId": "AdA8Fsqec274Keo-P9w4GNveax7Kqh8WwG1F9VS1ngDHtJ6-eT9GX8x3mihR686vimEy5OYMW3xddEZ_",
-    "clientSecret": "EDJMWKMRMJ_ASLeJJMHdlOHfjatkCg6RVWq8mOAUODj_-sMDfKMXss8gkN18kXX0Uf_s2ASSSIgbowGn",
-    "merchantEmail": "elvisiolengbis@gmail.com"
+    "clientId": "",
+    "clientSecret": "",
+    "merchantEmail": "lemaxshop01@gmail.com"
   },
   "live": {
     "clientId": "",
     "clientSecret": "",
-    "merchantEmail": "elvisiolengbis@gmail.com"
+    "merchantEmail": "lemaxshop01@gmail.com"
   }
 }

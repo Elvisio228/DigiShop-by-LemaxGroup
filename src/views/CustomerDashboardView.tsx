@@ -4,6 +4,7 @@ import { useToast } from '../context/ToastContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { Order } from '../types';
 import { PhoneInputWithCountry } from '../components/PhoneInputWithCountry';
+import { getProductImageUrl, handleImageFallback } from '../lib/imageUtils';
 import {
   Download,
   PackageCheck,
@@ -335,9 +336,10 @@ export const CustomerDashboardView: React.FC<CustomerDashboardViewProps> = ({ on
                 >
                   <div className="flex gap-3.5">
                     <img
-                      src={item.image}
+                      src={getProductImageUrl(item.image, item.categoryLabel, item.title)}
                       alt={item.title}
                       className="w-16 h-16 rounded-xl object-cover bg-slate-100 shrink-0"
+                      onError={(e) => handleImageFallback(e, item.categoryLabel)}
                     />
                     <div className="space-y-1 min-w-0">
                       <span className="text-[10px] font-semibold text-sky-600 dark:text-sky-400 uppercase tracking-wider">

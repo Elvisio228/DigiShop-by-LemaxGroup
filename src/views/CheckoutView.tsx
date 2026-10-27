@@ -26,6 +26,7 @@ import {
   HelpCircle
 } from 'lucide-react';
 import { PhoneInputWithCountry } from '../components/PhoneInputWithCountry';
+import { getProductImageUrl, handleImageFallback } from '../lib/imageUtils';
 
 interface CheckoutViewProps {
   initialItems?: Product[];
@@ -92,6 +93,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
   const [paydunyaChannel, setPaydunyaChannel] = useState<'tmoney' | 'moov' | 'wave' | 'orange_money' | 'mtn' | 'free_money' | 'wizall' | 'card_regional' | 'global'>('tmoney');
   const [paydunyaPhone, setPaydunyaPhone] = useState(user?.phone || '');
   const [paydunyaToken, setPaydunyaToken] = useState('');
+  const [paydunyaErrorDetail, setPaydunyaErrorDetail] = useState<string | null>(null);
 
   // For Mixx:
   const [mixxPhone, setMixxPhone] = useState(user?.phone || '');
@@ -116,8 +118,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
 
   // Dynamic PayPal & PayDunya credentials configured by admin
   const [paypalConfig, setPaypalConfig] = useState({
-    clientId: 'AdA8Fsqec274Keo-P9w4GNveax7Kqh8WwG1F9VS1ngDHtJ6-eT9GX8x3mihR686vimEy5OYMW3xddEZ_',
-    merchantEmail: 'elvisiolengbis@gmail.com'
+    clientId: '',
+    merchantEmail: 'lemaxshop01@gmail.com'
   });
   const [paydunyaConfig, setPaydunyaConfig] = useState<any>(null);
 
@@ -134,8 +136,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
         const active = parsed[mode] || parsed.sandbox || {};
         if (active.clientId || active.merchantEmail) {
           setPaypalConfig({
-            clientId: active.clientId || 'AdA8Fsqec274Keo-P9w4GNveax7Kqh8WwG1F9VS1ngDHtJ6-eT9GX8x3mihR686vimEy5OYMW3xddEZ_',
-            merchantEmail: active.merchantEmail || 'elvisiolengbis@gmail.com'
+            clientId: active.clientId || '',
+            merchantEmail: active.merchantEmail || 'lemaxshop01@gmail.com'
           });
         }
       }
@@ -170,8 +172,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                 const active = parsed[mode] || parsed.sandbox || {};
                 if (active.clientId || active.merchantEmail) {
                   setPaypalConfig({
-                    clientId: active.clientId || 'AdA8Fsqec274Keo-P9w4GNveax7Kqh8WwG1F9VS1ngDHtJ6-eT9GX8x3mihR686vimEy5OYMW3xddEZ_',
-                    merchantEmail: active.merchantEmail || 'elvisiolengbis@gmail.com'
+                    clientId: active.clientId || '',
+                    merchantEmail: active.merchantEmail || 'lemaxshop01@gmail.com'
                   });
                 }
               }
@@ -259,8 +261,8 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
         paymentDetails = {
           paypalOrderId: `PAYPAL-ORD-${Date.now()}`,
           payerEmail: paypalPayerEmail || email,
-          merchantAccount: paypalConfig.merchantEmail || 'elvisiolengbis@gmail.com',
-          clientId: paypalConfig.clientId || 'AdA8Fsqec274Keo-P9w4GNveax7Kqh8WwG1F9VS1ngDHtJ6-eT9GX8x3mihR686vimEy5OYMW3xddEZ_',
+          merchantAccount: paypalConfig.merchantEmail || 'lemaxshop01@gmail.com',
+          clientId: paypalConfig.clientId || '',
           status: 'COMPLETED'
         };
       } else if (paymentMethod === 'moov') {
@@ -308,9 +310,13 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
         });
 
         if (!invoiceResult.success) {
-          showToast(`Erreur PayDunya : ${invoiceResult.error || "Impossible d'initialiser le paiement automatique"}. Vérifiez vos clés en admin.`, 'error');
+          const errMsg = invoiceResult.error || "Impossible d'initialiser le paiement automatique";
+          setPaydunyaErrorDetail(errMsg);
+          showToast(`Erreur PayDunya : ${errMsg}`, 'error');
           setLoading(false);
           return;
+        } else {
+          setPaydunyaErrorDetail(null);
         }
 
         const tokenVal = invoiceResult.token || `PD-TOK-${Date.now()}`;
@@ -342,7 +348,7 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
           slug: item.slug,
           title: item.title,
           price: item.price,
-          image: item.image,
+          image: getProductImageUrl(item.image, item.category, item.title),
           categoryLabel: item.categoryLabel,
           fileDetails: item.fileDetails
         })),
@@ -1324,6 +1330,45 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
                 </div>
               </div>
 
+              {paydunyaErrorDetail && (
+                <div className="p-4 rounded-xl border border-rose-300 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/40 text-xs text-rose-900 dark:text-rose-200 space-y-3 shadow-xs">
+                  <div className="flex items-start gap-2.5">
+                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="font-bold text-sm text-rose-800 dark:text-rose-200">
+                        Réponse de la passerelle PayDunya :
+                      </p>
+                      <p className="text-xs text-rose-700 dark:text-rose-300 leading-snug">
+                        {paydunyaErrorDetail}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-lg bg-white/90 dark:bg-slate-900/90 border border-rose-200 dark:border-rose-800 text-[11px] text-slate-800 dark:text-slate-200 space-y-2">
+                    <p className="font-bold text-amber-700 dark:text-amber-400">
+                      💡 Comment activer le mode Live sur votre compte PayDunya en 30 secondes :
+                    </p>
+                    <ol className="list-decimal list-inside space-y-1 text-slate-700 dark:text-slate-300">
+                      <li>Connectez-vous sur votre compte PayDunya : <a href="https://app.paydunya.com" target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 underline font-bold">app.paydunya.com</a></li>
+                      <li>Dans le menu, cliquez sur <strong>Applications</strong> puis cliquez sur votre application DigiShop</li>
+                      <li>Dans les paramètres, passez l'option <strong>Mode de l'application</strong> de <strong>« Test »</strong> à <strong>« Live (Production) »</strong></li>
+                      <li>Cliquez sur <strong>Enregistrer</strong>, puis revenez ici et relancez le bouton bleu ci-dessous !</li>
+                    </ol>
+                    <div className="pt-1 flex flex-wrap gap-2">
+                      <a
+                        href="https://app.paydunya.com"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="px-3 py-1.5 rounded-lg bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs inline-flex items-center gap-1 shadow-xs transition-colors"
+                      >
+                        <span>Ouvrir mon compte PayDunya</span>
+                        <ExternalLink className="w-3 h-3" />
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Action */}
               <div className="pt-4 flex items-center justify-between">
                 <button
@@ -1369,7 +1414,12 @@ export const CheckoutView: React.FC<CheckoutViewProps> = ({
             <div className="space-y-3 max-h-64 overflow-y-auto pr-1">
               {checkoutItems.map(item => (
                 <div key={item.id} className="flex gap-3 text-xs items-center">
-                  <img src={item.image} alt={item.title} className="w-12 h-12 rounded-lg object-cover bg-slate-100" />
+                  <img
+                    src={getProductImageUrl(item.image, item.category, item.title)}
+                    alt={item.title}
+                    className="w-12 h-12 rounded-lg object-cover bg-slate-100"
+                    onError={(e) => handleImageFallback(e, item.category)}
+                  />
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-slate-900 dark:text-white truncate">{item.title}</p>
                     <p className="text-[11px] text-slate-500">{item.fileDetails.fileName}</p>

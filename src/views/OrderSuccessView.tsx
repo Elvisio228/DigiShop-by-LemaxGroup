@@ -4,6 +4,7 @@ import { CheckCircle2, Download, Clock, ShieldCheck, AlertCircle, ArrowRight, Ex
 import { useToast } from '../context/ToastContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { updateOrderStatusInFirestore, saveOrderToFirestore } from '../lib/firebase';
+import { getProductImageUrl, handleImageFallback } from '../lib/imageUtils';
 
 interface OrderSuccessViewProps {
   order: Order;
@@ -415,9 +416,10 @@ L'équipe Digishop by Lemax Group.
             >
               <div className="flex items-center gap-3.5">
                 <img
-                  src={item.image}
+                  src={getProductImageUrl(item.image, item.categoryLabel, item.title)}
                   alt={item.title}
                   className="w-14 h-14 rounded-lg object-cover bg-slate-200 shrink-0"
+                  onError={(e) => handleImageFallback(e, item.categoryLabel)}
                 />
                 <div className="space-y-1">
                   <h3 className="text-xs font-bold text-slate-900 dark:text-white">

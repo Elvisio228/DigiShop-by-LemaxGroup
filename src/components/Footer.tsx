@@ -55,7 +55,18 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenGitHubExport }
         {/* Brand Column */}
         <div className="md:col-span-2 space-y-3">
           <div className="flex items-center gap-2.5">
-            <span className="w-7 h-7 rounded-lg bg-sky-500 text-white flex items-center justify-center font-display text-sm font-extrabold">
+            <img
+              src="/logo-icon.svg"
+              alt="Digishop Logo"
+              className="w-7 h-7 rounded-lg shadow-sm shadow-sky-500/20 shrink-0 object-contain"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                const fb = target.nextElementSibling as HTMLElement;
+                if (fb) fb.style.display = 'flex';
+              }}
+            />
+            <span className="hidden w-7 h-7 rounded-lg bg-sky-500 text-white items-center justify-center font-display text-sm font-extrabold">
               D
             </span>
             <div className="flex flex-col leading-none">

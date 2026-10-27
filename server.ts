@@ -88,7 +88,7 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
     if (parts.length === 3) {
       const decoded = JSON.parse(Buffer.from(parts[1], 'base64url').toString('utf-8'));
       const email = (decoded.email || '').toLowerCase().trim();
-      const isAdminEmail = email === 'lemaxshop01@gmail.com' || email === 'admin@digishop.com' || email === 'elvisioleng@gmail.com';
+      const isAdminEmail = email === 'lemaxshop01@gmail.com' || email === 'admin@digishop.com';
       if (isAdminEmail || decoded.admin === true || decoded.role === 'admin') {
         (req as any).user = {
           id: decoded.user_id || decoded.sub || 'admin-user',
@@ -114,10 +114,8 @@ function authenticate(req: Request, res: Response, next: NextFunction) {
   const cleanToken = token.trim().toLowerCase();
   const isAdminIdentity = cleanToken === 'lemaxshop01@gmail.com' ||
     cleanToken === 'admin@digishop.com' ||
-    cleanToken === 'elvisioleng@gmail.com' ||
     adminHeaderEmail === 'lemaxshop01@gmail.com' ||
-    adminHeaderEmail === 'admin@digishop.com' ||
-    adminHeaderEmail === 'elvisioleng@gmail.com';
+    adminHeaderEmail === 'admin@digishop.com';
 
   if (isAdminIdentity) {
     (req as any).user = {
@@ -364,7 +362,7 @@ app.post('/api/auth/firebase-login', (req, res) => {
     }
 
     const cleanEmail = String(email).toLowerCase().trim();
-    const isAdminEmail = cleanEmail === 'lemaxshop01@gmail.com' || cleanEmail === 'admin@digishop.com' || cleanEmail === 'elvisioleng@gmail.com';
+    const isAdminEmail = cleanEmail === 'lemaxshop01@gmail.com' || cleanEmail === 'admin@digishop.com';
 
     let safeUser: any;
     const existing = db.getUserByEmail(cleanEmail);

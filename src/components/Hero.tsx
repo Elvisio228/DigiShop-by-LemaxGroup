@@ -81,7 +81,7 @@ export const Hero: React.FC<HeroProps> = ({ onExplore, onNewArrivals }) => {
           <div className="lg:col-span-5">
             <div className="relative rounded-2xl overflow-hidden border border-slate-200/80 dark:border-slate-800 shadow-2xl bg-slate-100 dark:bg-slate-900 group">
               <img
-                src="/src/assets/images/hero_digishop_showcase_1791461301216.jpg"
+                src="/assets/images/hero_digishop_showcase_1791461301216.jpg"
                 alt="Vitrine des produits digitaux Digishop"
                 referrerPolicy="no-referrer"
                 className="w-full h-[340px] sm:h-[400px] object-cover group-hover:scale-105 transition-transform duration-500"

@@ -41,7 +41,10 @@ import {
   Copy,
   Lock,
   AlertTriangle,
-  Check
+  AlertCircle,
+  Check,
+  Eye,
+  EyeOff
 } from 'lucide-react';
 import defaultDb from '../../data/db.json';
 import {
@@ -143,7 +146,7 @@ export function sanitizeProduct(p: any): Product {
     originalPrice: (originalPrice && !isNaN(originalPrice)) ? originalPrice : undefined,
     category: p?.category || 'ebooks',
     categoryLabel: p?.categoryLabel || 'E-books',
-    image: p?.image || '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
+    image: p?.image || '/assets/images/product_ebook_marketing_1791461314730.jpg',
     previewImages: Array.isArray(p?.previewImages) ? p.previewImages : [],
     tags: Array.isArray(p?.tags) ? p.tags : (typeof p?.tags === 'string' ? p.tags.split(',').map((t: string) => t.trim()) : []),
     downloadsCount: typeof p?.downloadsCount === 'number' ? p.downloadsCount : (parseInt(p?.downloadsCount) || 0),
@@ -224,6 +227,44 @@ const ADMIN_DOMAINS: Record<string, { title: string; subtitle: string; icon: any
   }
 };
 
+interface PaydunyaSettingsState {
+  mode: 'test' | 'live';
+  test: {
+    masterKey: string;
+    publicKey: string;
+    privateKey: string;
+    token: string;
+  };
+  live: {
+    masterKey: string;
+    publicKey: string;
+    privateKey: string;
+    token: string;
+  };
+}
+
+interface PayPalSettingsState {
+  mode: 'sandbox' | 'live';
+  sandbox: {
+    clientId: string;
+    clientSecret: string;
+    merchantEmail: string;
+  };
+  live: {
+    clientId: string;
+    clientSecret: string;
+    merchantEmail: string;
+  };
+}
+
+interface MobileMoneySettingsState {
+  moovNumber: string;
+  mixxNumber: string;
+  moovName?: string;
+  mixxName?: string;
+  instructions?: string;
+}
+
 interface AdminDashboardViewProps {
   initialTab?: 'stats' | 'orders' | 'products' | 'customers' | 'coupons' | 'ads' | 'reviews' | 'gateways' | 'security' | 'ipn';
   initialProducts?: Product[];
@@ -239,7 +280,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   onOpenGitHubExport,
   onProductsUpdated
 }) => {
-  const { user, isAdmin, token, loginAsAdminDemo } = useAuth();
+  const { user, isAdmin, token } = useAuth();
   const { showToast } = useToast();
 
   const [activeTab, setActiveTab] = useState<'stats' | 'orders' | 'products' | 'customers' | 'coupons' | 'ads' | 'reviews' | 'gateways' | 'security' | 'ipn'>(initialTab || 'stats');
@@ -343,40 +384,58 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
   const [savingSecurity, setSavingSecurity] = useState(false);
 
   // Payment Gateways Settings state
-  const [paydunyaSettings, setPaydunyaSettings] = useState({
-    mode: 'test' as 'test' | 'live',
-    test: {
-      masterKey: 'A9aptKvE-lZP6-DcnX-Q4xk-EM55f2AnvUUe',
-      publicKey: 'test_public_C0DiGjAriG6r8OSoFAh2ELErGjk',
-      privateKey: 'test_private_C0DiGjAriG6r8OSoFAh2ELErGjk',
-      token: 'Udf2ks6FFd9oMKsz32Gf'
-    },
-    live: {
-      masterKey: '',
-      publicKey: '',
-      privateKey: '',
-      token: ''
-    }
+  const [paydunyaSettings, setPaydunyaSettings] = useState<PaydunyaSettingsState>(() => {
+    try {
+      const cached = localStorage.getItem('digishop_paydunya');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return {
+      mode: 'live' as 'test' | 'live',
+      test: {
+        masterKey: '',
+        publicKey: '',
+        privateKey: '',
+        token: ''
+      },
+      live: {
+        masterKey: '',
+        publicKey: '',
+        privateKey: '',
+        token: ''
+      }
+    };
   });
   const [savingGateway, setSavingGateway] = useState(false);
 
-  const [paypalSettings, setPaypalSettings] = useState({
-    mode: 'sandbox' as 'sandbox' | 'live',
-    sandbox: {
-      clientId: 'AdA8Fsqec274Keo-P9w4GNveax7Kqh8WwG1F9VS1ngDHtJ6-eT9GX8x3mihR686vimEy5OYMW3xddEZ_',
-      clientSecret: 'EDJMWKMRMJ_ASLeJJMHdlOHfjatkCg6RVWq8mOAUODj_-sMDfKMXss8gkN18kXX0Uf_s2ASSSIgbowGn',
-      merchantEmail: 'elvisiolengbis@gmail.com'
-    },
-    live: {
-      clientId: '',
-      clientSecret: '',
-      merchantEmail: 'elvisiolengbis@gmail.com'
-    }
+  // Key visibility toggles (prevents cleartext display on screen)
+  const [showMasterKey, setShowMasterKey] = useState(false);
+  const [showPrivateKey, setShowPrivateKey] = useState(false);
+  const [showToken, setShowToken] = useState(false);
+  const [showPayPalSecret, setShowPayPalSecret] = useState(false);
+
+  const [paypalSettings, setPaypalSettings] = useState<PayPalSettingsState>(() => {
+    try {
+      const cached = localStorage.getItem('digishop_paypal');
+      if (cached) return JSON.parse(cached);
+    } catch {}
+    return {
+      mode: 'live' as 'sandbox' | 'live',
+      sandbox: {
+        clientId: '',
+        clientSecret: '',
+        merchantEmail: 'lemaxshop01@gmail.com'
+      },
+      live: {
+        clientId: '',
+        clientSecret: '',
+        merchantEmail: 'lemaxshop01@gmail.com'
+      }
+    };
   });
   const [savingPayPal, setSavingPayPal] = useState(false);
 
   // Mobile Money Direct Settings (Moov Money Togo / Mixx by Yas)
-  const [mobileMoneySettings, setMobileMoneySettings] = useState({
+  const [mobileMoneySettings, setMobileMoneySettings] = useState<MobileMoneySettingsState>({
     moovNumber: '99668884',
     mixxNumber: '90107715',
     moovName: 'Lemax Group',
@@ -445,7 +504,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
     originalPrice: 49.90,
     category: 'ebooks' as ProductCategory,
     categoryLabel: 'E-books',
-    image: '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
+    image: '/assets/images/product_ebook_marketing_1791461314730.jpg',
     tags: 'Digital, Business',
     isPromo: false,
     isNew: true,
@@ -725,18 +784,8 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
         <div className="flex flex-col sm:flex-row gap-2.5 justify-center pt-2">
           <button
             type="button"
-            onClick={async () => {
-              await loginAsAdminDemo?.();
-              fetchAdminData();
-            }}
-            className="px-4 py-2 text-xs font-bold bg-amber-500 hover:bg-amber-600 text-white rounded-xl shadow-sm transition-colors"
-          >
-            👑 Se connecter comme Administrateur (1 clic)
-          </button>
-          <button
-            type="button"
             onClick={() => onNavigate('home')}
-            className="px-4 py-2 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl"
+            className="px-5 py-2.5 text-xs font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl hover:bg-slate-200 transition-colors"
           >
             Retour à l'accueil
           </button>
@@ -1366,7 +1415,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       originalPrice: 49.90,
                       category: 'ebooks',
                       categoryLabel: 'E-books',
-                      image: '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
+                      image: '/assets/images/product_ebook_marketing_1791461314730.jpg',
                       tags: 'Guide, Digital',
                       isPromo: false,
                       isNew: true,
@@ -1829,7 +1878,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       originalPrice: 49.90,
                       category: 'ebooks',
                       categoryLabel: 'E-books',
-                      image: '/src/assets/images/product_ebook_marketing_1791461314730.jpg',
+                      image: '/assets/images/product_ebook_marketing_1791461314730.jpg',
                       tags: 'Guide, Digital',
                       isPromo: false,
                       isNew: true,
@@ -1861,7 +1910,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                 displayedProducts.map(rawP => {
                   const p = sanitizeProduct(rawP);
                   const priceNum = typeof p.price === 'number' && !isNaN(p.price) ? p.price : 0;
-                  const safeImage = p.image || '/src/assets/images/product_ebook_marketing_1791461314730.jpg';
+                  const safeImage = p.image || '/assets/images/product_ebook_marketing_1791461314730.jpg';
                   const safeCategoryLabel = p.categoryLabel || p.category || 'Digital';
 
                   return (
@@ -1990,7 +2039,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                       const safeFeatures = Array.isArray(p.features) ? p.features.join(', ') : (typeof p.features === 'string' ? p.features : '');
                       const safeCategoryLabel = p.categoryLabel || p.category || 'Digital';
                       const safeDownloads = typeof p.downloadsCount === 'number' && !isNaN(p.downloadsCount) ? p.downloadsCount : 0;
-                      const safeImage = p.image || '/src/assets/images/product_ebook_marketing_1791461314730.jpg';
+                      const safeImage = p.image || '/assets/images/product_ebook_marketing_1791461314730.jpg';
 
                       return (
                         <tr key={p.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/40 transition-colors">
@@ -1999,7 +2048,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                               src={safeImage}
                               alt={p.title || 'Produit'}
                               onError={(e) => {
-                                (e.target as HTMLImageElement).src = '/src/assets/images/product_ebook_marketing_1791461314730.jpg';
+                                (e.target as HTMLImageElement).src = '/assets/images/product_ebook_marketing_1791461314730.jpg';
                               }}
                               className="w-12 h-12 rounded-lg object-cover bg-slate-200 dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700"
                             />
@@ -2545,6 +2594,25 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                   </span>
                 </div>
 
+                {/* Notice spéciale PayDunya Activation Live */}
+                <div className="p-3.5 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 text-[11px] text-amber-900 dark:text-amber-200 space-y-1.5">
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <AlertCircle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Étape obligatoire sur le portail marchand PayDunya (app.paydunya.com) :</span>
+                  </div>
+                  <p className="leading-snug text-slate-700 dark:text-slate-300">
+                    Pour que PayDunya accepte vos clés en mode réel, votre application doit être basculée en <strong>« Live »</strong> dans votre tableau de bord PayDunya :
+                  </p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-400 font-mono bg-white dark:bg-slate-900 p-2 rounded border border-amber-200 dark:border-amber-800">
+                    1. Connectez-vous sur <strong>app.paydunya.com</strong><br />
+                    2. Allez dans le menu <strong>Applications</strong> &gt; Cliquez sur votre application<br />
+                    3. Dans <strong>Mode de l'application</strong>, sélectionnez <strong>Live</strong> &gt; Enregistrer.
+                  </p>
+                  <p className="text-[10px] text-amber-800 dark:text-amber-300 font-medium">
+                    ⚠️ Si l'application reste en mode Test sur app.paydunya.com, l'API renvoie le message : <em>« Logon to your PayDunya account and set your application mode to live »</em>.
+                  </p>
+                </div>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -2570,19 +2638,29 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Clé Principale (Master Key {paydunyaSettings.mode === 'live' ? 'Live' : 'Test'})
                     </label>
-                    <input
-                      type="text"
-                      value={paydunyaSettings[paydunyaSettings.mode].masterKey}
-                      onChange={(e) => {
-                        const val = e.target.value.trim();
-                        setPaydunyaSettings(prev => ({
-                          ...prev,
-                          [prev.mode]: { ...prev[prev.mode], masterKey: val }
-                        }));
-                      }}
-                      placeholder={paydunyaSettings.mode === 'live' ? 'Master Key de Production PayDunya' : 'A9aptKvE-lZP6-DcnX-Q4xk-EM55f2AnvUUe'}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-xs text-slate-900 dark:text-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showMasterKey ? 'text' : 'password'}
+                        value={paydunyaSettings[paydunyaSettings.mode].masterKey}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setPaydunyaSettings(prev => ({
+                            ...prev,
+                            [prev.mode]: { ...prev[prev.mode], masterKey: val }
+                          }));
+                        }}
+                        placeholder={paydunyaSettings.mode === 'live' ? 'Collez votre Master Key Live PayDunya' : 'Collez votre Master Key Test PayDunya'}
+                        className="w-full px-3 py-2 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-xs text-slate-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowMasterKey(!showMasterKey)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded"
+                        title={showMasterKey ? 'Masquer' : 'Afficher'}
+                      >
+                        {showMasterKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                     <p className="text-[10px] text-slate-500 mt-1">Identifiant unique de votre compte marchand dans PayDunya.</p>
                   </div>
                 </div>
@@ -2592,39 +2670,59 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Clé Privée ({paydunyaSettings.mode === 'live' ? 'Live Private Key' : 'Test Private Key'}) *
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={paydunyaSettings[paydunyaSettings.mode].privateKey}
-                      onChange={(e) => {
-                        const val = e.target.value.trim();
-                        setPaydunyaSettings(prev => ({
-                          ...prev,
-                          [prev.mode]: { ...prev[prev.mode], privateKey: val }
-                        }));
-                      }}
-                      placeholder={paydunyaSettings.mode === 'live' ? 'live_private_...' : 'test_private_...'}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-xs text-slate-900 dark:text-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPrivateKey ? 'text' : 'password'}
+                        required
+                        value={paydunyaSettings[paydunyaSettings.mode].privateKey}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setPaydunyaSettings(prev => ({
+                            ...prev,
+                            [prev.mode]: { ...prev[prev.mode], privateKey: val }
+                          }));
+                        }}
+                        placeholder={paydunyaSettings.mode === 'live' ? 'live_private_...' : 'test_private_...'}
+                        className="w-full px-3 py-2 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-xs text-slate-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPrivateKey(!showPrivateKey)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded"
+                        title={showPrivateKey ? 'Masquer' : 'Afficher'}
+                      >
+                        {showPrivateKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <label className="block font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Token API ({paydunyaSettings.mode === 'live' ? 'Live Token' : 'Test Token'}) *
                     </label>
-                    <input
-                      type="text"
-                      required
-                      value={paydunyaSettings[paydunyaSettings.mode].token}
-                      onChange={(e) => {
-                        const val = e.target.value.trim();
-                        setPaydunyaSettings(prev => ({
-                          ...prev,
-                          [prev.mode]: { ...prev[prev.mode], token: val }
-                        }));
-                      }}
-                      placeholder="Token PayDunya"
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-xs text-slate-900 dark:text-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showToken ? 'text' : 'password'}
+                        required
+                        value={paydunyaSettings[paydunyaSettings.mode].token}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setPaydunyaSettings(prev => ({
+                            ...prev,
+                            [prev.mode]: { ...prev[prev.mode], token: val }
+                          }));
+                        }}
+                        placeholder="Token PayDunya"
+                        className="w-full px-3 py-2 pr-10 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl font-mono text-xs text-slate-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowToken(!showToken)}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 rounded"
+                        title={showToken ? 'Masquer' : 'Afficher'}
+                      >
+                        {showToken ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 
@@ -2775,7 +2873,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           [prev.mode]: { ...prev[prev.mode], clientId: val }
                         }));
                       }}
-                      placeholder={paypalSettings.mode === 'live' ? 'Collez votre Client ID PayPal Live...' : 'AdA8Fsqec...'}
+                      placeholder={paypalSettings.mode === 'live' ? 'Collez votre Client ID PayPal Live...' : 'Collez votre Client ID PayPal Sandbox...'}
                       className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-[11px] text-slate-900 dark:text-white"
                     />
                   </div>
@@ -2784,19 +2882,29 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                     <label className="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">
                       Client Secret ({paypalSettings.mode === 'live' ? 'Production Live' : 'Sandbox Test'})
                     </label>
-                    <input
-                      type="password"
-                      value={paypalSettings[paypalSettings.mode].clientSecret}
-                      onChange={(e) => {
-                        const val = e.target.value.trim();
-                        setPaypalSettings(prev => ({
-                          ...prev,
-                          [prev.mode]: { ...prev[prev.mode], clientSecret: val }
-                        }));
-                      }}
-                      placeholder={paypalSettings.mode === 'live' ? 'Collez votre Secret PayPal Live...' : 'EDJMWKMRMJ...'}
-                      className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-[11px] text-slate-900 dark:text-white"
-                    />
+                    <div className="relative">
+                      <input
+                        type={showPayPalSecret ? 'text' : 'password'}
+                        value={paypalSettings[paypalSettings.mode].clientSecret}
+                        onChange={(e) => {
+                          const val = e.target.value.trim();
+                          setPaypalSettings(prev => ({
+                            ...prev,
+                            [prev.mode]: { ...prev[prev.mode], clientSecret: val }
+                          }));
+                        }}
+                        placeholder={paypalSettings.mode === 'live' ? 'Collez votre Secret PayPal Live...' : 'Collez votre Secret PayPal Sandbox...'}
+                        className="w-full px-2.5 py-1.5 pr-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-[11px] text-slate-900 dark:text-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPayPalSecret(!showPayPalSecret)}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-0.5 rounded"
+                        title={showPayPalSecret ? 'Masquer' : 'Afficher'}
+                      >
+                        {showPayPalSecret ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
                   </div>
 
                   <div>
@@ -2813,7 +2921,7 @@ export const AdminDashboardView: React.FC<AdminDashboardViewProps> = ({
                           [prev.mode]: { ...prev[prev.mode], merchantEmail: val }
                         }));
                       }}
-                      placeholder="elvisiolengbis@gmail.com"
+                      placeholder="lemaxshop01@gmail.com"
                       className="w-full px-2.5 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg font-mono text-[11px] text-slate-900 dark:text-white"
                     />
                   </div>

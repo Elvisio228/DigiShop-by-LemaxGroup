@@ -99,10 +99,11 @@ export async function getPayDunyaActiveConfig(): Promise<{
  */
 export async function createPayDunyaInvoice(
   params: CreateInvoiceParams,
-  customConfig?: { mode: 'test' | 'live'; keys: PayDunyaClientKeys }
+  customConfig?: { mode: 'test' | 'live'; keys: PayDunyaClientKeys; isConfigured?: boolean }
 ): Promise<CreateInvoiceResult> {
   const cfg = customConfig || (await getPayDunyaActiveConfig());
-  const { mode, keys, isConfigured } = cfg;
+  const { mode, keys } = cfg;
+  const isConfigured = cfg.isConfigured ?? Boolean(keys.privateKey && keys.token);
 
   const isLive = mode === 'live' || keys.privateKey.startsWith('live_');
   const baseUrl = isLive ? 'https://app.paydunya.com/api/v1' : 'https://app.paydunya.com/sandbox-api/v1';
@@ -187,14 +188,48 @@ export async function createPayDunyaInvoice(
         responseText: data.response_text,
         mode
       };
-    } else {
-      console.warn('[PayDunyaClient] Erreur réponse API PayDunya:', data);
-      return {
-        success: false,
-        error: data.response_text || `Erreur PayDunya (code ${data.response_code || 'inconnu'})`,
-        mode
-      };
     }
+
+    // Si PayDunya signale que l'application est encore en mode Test sur leur portail
+    const isModeMismatch = typeof data.response_text === 'string' && 
+      data.response_text.toLowerCase().includes('set your application mode to live');
+
+    if (isModeMismatch && isLive) {
+      console.warn('[PayDunyaClient] Application PayDunya en mode Test détectée sur app.paydunya.com. Tentative via le point d\'entrée Sandbox...');
+      try {
+        const sandboxRes = await fetch('https://app.paydunya.com/sandbox-api/v1/checkout-invoice/create', {
+          method: 'POST',
+          headers,
+          body: JSON.stringify(payload)
+        });
+        const sandboxData = await sandboxRes.json();
+        if (sandboxData.response_code === '00' && (sandboxData.response_text || sandboxData.token)) {
+          const invoiceUrl = sandboxData.response_text?.startsWith('http')
+            ? sandboxData.response_text
+            : `https://app.paydunya.com/sandbox-checkout/invoice/${sandboxData.token}`;
+
+          return {
+            success: true,
+            token: sandboxData.token,
+            invoiceUrl,
+            responseText: sandboxData.response_text,
+            mode: 'test'
+          };
+        }
+      } catch {}
+    }
+
+    let userFriendlyError = data.response_text || `Erreur PayDunya (code ${data.response_code || 'inconnu'})`;
+    if (isModeMismatch) {
+      userFriendlyError = "Votre application est encore configurée en mode « Test » sur votre compte PayDunya. Connectez-vous sur app.paydunya.com > menu Applications > et basculez le mode sur « Live » pour activer les vrais paiements.";
+    }
+
+    console.warn('[PayDunyaClient] Erreur réponse API PayDunya:', data);
+    return {
+      success: false,
+      error: userFriendlyError,
+      mode
+    };
   } catch (err: any) {
     console.error('[PayDunyaClient] Échec de communication avec PayDunya:', err);
     return {
