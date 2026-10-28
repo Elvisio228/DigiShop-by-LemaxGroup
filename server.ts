@@ -1196,6 +1196,20 @@ app.get('/api/downloads/:token/:productId', (req, res) => {
 // REVIEWS & COMMUNITY
 // ==========================================
 
+app.get('/api/reviews', (req, res) => {
+  try {
+    const showAll = req.query.all === 'true';
+    const reviews = db.getReviews();
+    if (showAll) {
+      return res.json(reviews);
+    }
+    // Return only approved reviews for public display
+    res.json(reviews.filter(r => r.isApproved !== false));
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 app.get('/api/reviews/:productId', (req, res) => {
   const { productId } = req.params;
   const reviews = db.getReviews(productId);
@@ -1205,7 +1219,7 @@ app.get('/api/reviews/:productId', (req, res) => {
 app.post('/api/reviews', optionalAuth, (req, res) => {
   try {
     const { productId, productTitle, userName, rating, comment } = req.body;
-    if (!productId || !userName || !rating || !comment) {
+    if (!userName || !rating || !comment) {
       return res.status(400).json({ error: 'Champs obligatoires manquants.' });
     }
 
@@ -1214,7 +1228,7 @@ app.post('/api/reviews', optionalAuth, (req, res) => {
 
     // Check if verified purchaser
     let isVerifiedPurchase = false;
-    if (userId) {
+    if (userId && productId && productId !== 'general') {
       const userOrders = db.getOrdersByUser(userId);
       isVerifiedPurchase = userOrders.some(
         o => o.paymentStatus === 'paid' && o.items.some(i => i.productId === productId)
@@ -1222,17 +1236,44 @@ app.post('/api/reviews', optionalAuth, (req, res) => {
     }
 
     const review = db.addReview({
-      productId,
-      productTitle: productTitle || 'Produit Digishop',
+      productId: productId || 'general',
+      productTitle: productTitle || 'Boutique DigiShop',
       userId,
-      userName,
+      userName: userName.trim(),
       rating: Math.max(1, Math.min(5, parseInt(rating, 10))),
-      comment,
+      comment: comment.trim(),
       isVerifiedPurchase,
-      isApproved: true // Auto-approved or moderated by admin
+      isApproved: true // Auto-approved
     });
 
     res.status(201).json(review);
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.patch('/api/admin/reviews/:id/status', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    const { isApproved } = req.body;
+    const success = db.updateReviewStatus(id, !!isApproved);
+    if (!success) {
+      return res.status(404).json({ error: 'Avis introuvable' });
+    }
+    res.json({ success: true, id, isApproved });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+app.delete('/api/admin/reviews/:id', requireAdmin, (req, res) => {
+  try {
+    const { id } = req.params;
+    const success = db.deleteReview(id);
+    if (!success) {
+      return res.status(404).json({ error: 'Avis introuvable' });
+    }
+    res.json({ success: true, message: 'Avis supprimé avec succès' });
   } catch (err: any) {
     res.status(500).json({ error: err.message });
   }

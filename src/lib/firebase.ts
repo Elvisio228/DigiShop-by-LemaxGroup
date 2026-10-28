@@ -481,5 +481,76 @@ export async function deleteProductFromFirestore(productId: string): Promise<voi
   }
 }
 
+// --- Reviews Collection Helpers ---
+
+export async function getAllReviewsFromFirestore(fallbackReviews: Review[] = []): Promise<Review[]> {
+  const path = 'reviews';
+  try {
+    const snap = await getDocs(collection(db, path));
+    if (!snap.empty) {
+      const items: Review[] = [];
+      snap.forEach(d => {
+        const rev = d.data() as Review;
+        if (rev && rev.comment) {
+          items.push({
+            ...rev,
+            id: rev.id || d.id
+          });
+        }
+      });
+      if (items.length > 0) {
+        return items.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      }
+    }
+    // Seed initial reviews if Firestore collection is currently empty
+    if (fallbackReviews.length > 0) {
+      for (const rev of fallbackReviews) {
+        setDoc(doc(db, path, rev.id), rev).catch(() => {});
+      }
+      return fallbackReviews;
+    }
+  } catch (err) {
+    console.warn('[Firestore] getAllReviewsFromFirestore warning:', err);
+  }
+  return fallbackReviews;
+}
+
+export async function getProductReviewsFromFirestore(productId: string, fallbackReviews: Review[] = []): Promise<Review[]> {
+  try {
+    const all = await getAllReviewsFromFirestore(fallbackReviews);
+    return all.filter(r => r.productId === productId && (r.isApproved !== false));
+  } catch (err) {
+    console.warn('[Firestore] getProductReviewsFromFirestore warning:', err);
+    return fallbackReviews.filter(r => r.productId === productId);
+  }
+}
+
+export async function saveReviewToFirestore(review: Review): Promise<void> {
+  const path = 'reviews';
+  try {
+    await setDoc(doc(db, path, review.id), review);
+  } catch (err) {
+    handleFirestoreError(err, OperationType.CREATE, `${path}/${review.id}`);
+  }
+}
+
+export async function deleteReviewFromFirestore(reviewId: string): Promise<void> {
+  const path = 'reviews';
+  try {
+    await deleteDoc(doc(db, path, reviewId));
+  } catch (err) {
+    handleFirestoreError(err, OperationType.DELETE, `${path}/${reviewId}`);
+  }
+}
+
+export async function updateReviewStatusInFirestore(reviewId: string, isApproved: boolean): Promise<void> {
+  const path = 'reviews';
+  try {
+    await updateDoc(doc(db, path, reviewId), { isApproved });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.UPDATE, `${path}/${reviewId}`);
+  }
+}
+
 
 

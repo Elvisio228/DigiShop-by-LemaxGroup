@@ -44,7 +44,7 @@ export async function safeFetchJson<T = any>(
       status: res.status,
       data: null,
       isHtmlResponse: true,
-      error: 'STATIC_HOSTING_ENDPOINT_UNAVAILABLE'
+      error: 'Passerelle API indisponible sur hébergement statique. Utilisation du mode direct.'
     };
   } catch (netErr: any) {
     return {

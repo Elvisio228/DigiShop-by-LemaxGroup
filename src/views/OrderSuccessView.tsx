@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
-import { Order } from '../types';
-import { CheckCircle2, Download, Clock, ShieldCheck, AlertCircle, ArrowRight, ExternalLink, RefreshCw, Lock, Zap, Smartphone, MessageCircle, HelpCircle } from 'lucide-react';
+import { Order, Product } from '../types';
+import { CheckCircle2, Download, Clock, ShieldCheck, AlertCircle, ArrowRight, ExternalLink, RefreshCw, Lock, Zap, Smartphone, MessageCircle, HelpCircle, Star } from 'lucide-react';
 import { useToast } from '../context/ToastContext';
 import { useCurrency } from '../context/CurrencyContext';
 import { useAuth } from '../context/AuthContext';
 import { updateOrderStatusInFirestore, saveOrderToFirestore } from '../lib/firebase';
 import { getProductImageUrl, handleImageFallback } from '../lib/imageUtils';
+import { ReviewModal } from '../components/ReviewModal';
 
 interface OrderSuccessViewProps {
   order: Order;
@@ -20,6 +21,7 @@ export const OrderSuccessView: React.FC<OrderSuccessViewProps> = ({ order, onNav
   const [checkingStatus, setCheckingStatus] = useState(false);
   const [validatingDirectly, setValidatingDirectly] = useState(false);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
 
   const isPaid = currentOrder.paymentStatus === 'paid';
 
@@ -488,7 +490,16 @@ L'équipe Digishop by Lemax Group.
       </div>
 
       {/* Next Actions */}
-      <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-xs pt-2">
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 text-xs pt-2">
+        <button
+          type="button"
+          onClick={() => setReviewModalOpen(true)}
+          className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold shadow-sm transition-all"
+        >
+          <Star className="w-4 h-4 fill-slate-950" />
+          <span>Donner mon avis sur mon achat</span>
+        </button>
+
         <button
           type="button"
           onClick={() => onNavigate('catalog')}
@@ -505,6 +516,14 @@ L'équipe Digishop by Lemax Group.
           Accéder à mon espace client
         </button>
       </div>
+
+      {/* Review Modal for Buyer */}
+      <ReviewModal
+        isOpen={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        products={currentOrder.items as unknown as Product[]}
+        initialProductId={currentOrder.items[0]?.productId}
+      />
 
     </div>
   );

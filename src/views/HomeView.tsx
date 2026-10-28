@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Hero } from '../components/Hero';
 import { ProductCard } from '../components/ProductCard';
 import { AdBanner } from '../components/AdBanner';
 import { NewsletterSection } from '../components/NewsletterSection';
-import { Product } from '../types';
+import { ReviewsSection } from '../components/ReviewsSection';
+import { ReviewModal } from '../components/ReviewModal';
+import { Product, Review } from '../types';
 import { ArrowRight, BookOpen, LayoutTemplate, Palette, FileText, GraduationCap, ShieldCheck, Download, Award } from 'lucide-react';
+import defaultDb from '../../data/db.json';
 
 interface HomeViewProps {
   products: Product[];
@@ -19,6 +22,51 @@ export const HomeView: React.FC<HomeViewProps> = ({
   onBuyNow,
   onNavigate
 }) => {
+  const [reviews, setReviews] = useState<Review[]>(() => (defaultDb.reviews || []) as Review[]);
+  const [reviewModalOpen, setReviewModalOpen] = useState(false);
+
+  // Load reviews directly from Firestore with fallback
+  useEffect(() => {
+    let isMounted = true;
+    const fetchReviews = async () => {
+      const fallbackList = (defaultDb.reviews || []) as Review[];
+      try {
+        const { getAllReviewsFromFirestore } = await import('../lib/firebase');
+        const firestoreList = await getAllReviewsFromFirestore(fallbackList);
+        if (isMounted && firestoreList && firestoreList.length > 0) {
+          setReviews(firestoreList);
+          return;
+        }
+      } catch (fbErr) {
+        console.warn('[HomeView] Direct Firestore reviews load fallback:', fbErr);
+      }
+
+      try {
+        const { safeFetchJson } = await import('../lib/apiClient');
+        const res = await safeFetchJson<Review[]>('/api/reviews');
+        if (isMounted && res.ok && Array.isArray(res.data) && res.data.length > 0) {
+          setReviews(res.data);
+          return;
+        }
+      } catch {}
+    };
+
+    fetchReviews();
+
+    const handleReviewAdded = (e: Event) => {
+      const customEvent = e as CustomEvent<Review>;
+      if (customEvent.detail) {
+        setReviews(prev => [customEvent.detail, ...prev.filter(r => r.id !== customEvent.detail.id)]);
+      }
+    };
+
+    window.addEventListener('digishop:review-added', handleReviewAdded);
+    return () => {
+      isMounted = false;
+      window.removeEventListener('digishop:review-added', handleReviewAdded);
+    };
+  }, []);
+
   const featuredProducts = products.filter(p => p.isFeatured || p.isPromo).slice(0, 6);
 
   const categories = [
@@ -192,8 +240,26 @@ export const HomeView: React.FC<HomeViewProps> = ({
         </div>
       </section>
 
-      {/* 6. Newsletter */}
+      {/* 6. Avis Clients & Témoignages Vérifiés */}
+      <ReviewsSection
+        reviews={reviews}
+        products={products}
+        onOpenReviewModal={() => setReviewModalOpen(true)}
+        onSelectProduct={onSelectProduct}
+      />
+
+      {/* 7. Newsletter */}
       <NewsletterSection />
+
+      {/* Review Submission Modal accessible to all clients */}
+      <ReviewModal
+        isOpen={reviewModalOpen}
+        onClose={() => setReviewModalOpen(false)}
+        products={products}
+        onReviewSubmitted={(newRev) => {
+          setReviews(prev => [newRev, ...prev]);
+        }}
+      />
 
     </div>
   );

@@ -1019,6 +1019,61 @@
       "isVerifiedPurchase": true,
       "isApproved": true,
       "createdAt": "2026-03-24T17:15:00Z"
+    },
+    {
+      "id": "rev-4",
+      "productId": "prod-4",
+      "productTitle": "Masterclass E-commerce & Scaling International",
+      "userName": "Koffi Mensah",
+      "rating": 5,
+      "comment": "Excellente formation très concrète. Les modules sur la logistique internationale et les paiements locaux m'ont évité de coûteuses erreurs. Bravo à l'équipe Lemax Group.",
+      "isVerifiedPurchase": true,
+      "isApproved": true,
+      "createdAt": "2026-03-26T11:05:00Z"
+    },
+    {
+      "id": "rev-5",
+      "productId": "prod-5",
+      "productTitle": "Pack Juridique Pro : Contrats, CGV & Accords Numériques",
+      "userName": "Émilie Gauthier",
+      "rating": 5,
+      "comment": "Indispensable pour tout freelance ou agence ! Les modèles de CGV et contrats de prestation sont clairs, complets et faciles à personnaliser. Gain de temps inestimable.",
+      "isVerifiedPurchase": true,
+      "isApproved": true,
+      "createdAt": "2026-03-28T16:42:00Z"
+    },
+    {
+      "id": "rev-6",
+      "productId": "prod-6",
+      "productTitle": "Kit Ultime CV & Lettres de Motivation à Fort Impact",
+      "userName": "David Lawson",
+      "rating": 5,
+      "comment": "Templates d'une élégance rare et parfaitement lisibles par les recruteurs. J'ai obtenu trois entretiens d'embauche en moins de dix jours après avoir refait mon CV avec ce kit.",
+      "isVerifiedPurchase": true,
+      "isApproved": true,
+      "createdAt": "2026-04-02T08:30:00Z"
+    },
+    {
+      "id": "rev-7",
+      "productId": "prod-8",
+      "productTitle": "Système Devis & Facturation Automatisé Excel / Sheets",
+      "userName": "Fatou Ndiaye",
+      "rating": 5,
+      "comment": "Adieu les logiciels avec abonnements mensuels ruineux. Cet outil Excel calcule tout automatiquement avec TVA et génère les factures PDF en un clic. Service client au top.",
+      "isVerifiedPurchase": true,
+      "isApproved": true,
+      "createdAt": "2026-04-05T13:14:00Z"
+    },
+    {
+      "id": "rev-8",
+      "productId": "general",
+      "productTitle": "Boutique DigiShop",
+      "userName": "Christian Agbeko",
+      "rating": 5,
+      "comment": "Paiement ultra fluide par Moov Money et téléchargement débloqué instantanément. C'est rare de trouver une plateforme digitale aussi rapide, moderne et fiable en Afrique.",
+      "isVerifiedPurchase": true,
+      "isApproved": true,
+      "createdAt": "2026-04-08T19:50:00Z"
     }
   ],
   "advertisements": [

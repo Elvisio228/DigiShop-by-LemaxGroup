@@ -608,6 +608,16 @@ class Database {
     return true;
   }
 
+  deleteReview(id: string): boolean {
+    const initLen = this.data.reviews.length;
+    this.data.reviews = this.data.reviews.filter(r => r.id !== id);
+    if (this.data.reviews.length !== initLen) {
+      this.save();
+      return true;
+    }
+    return false;
+  }
+
   // --- Newsletter ---
   addNewsletterSubscriber(email: string): boolean {
     const normalized = email.toLowerCase().trim();

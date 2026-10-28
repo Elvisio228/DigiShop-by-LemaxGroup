@@ -113,6 +113,11 @@ export const Footer: React.FC<FooterProps> = ({ onNavigate, onOpenGitHubExport }
               </button>
             </li>
             <li>
+              <button onClick={() => onNavigate('home')} className="hover:text-sky-500 transition-colors">
+                Avis Clients ⭐
+              </button>
+            </li>
+            <li>
               <button onClick={() => onNavigate('about')} className="hover:text-sky-500 transition-colors">
                 À propos
               </button>

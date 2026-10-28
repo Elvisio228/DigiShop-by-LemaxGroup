@@ -32,6 +32,7 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
   // Review Form state
   const [newRating, setNewRating] = useState(5);
   const [newComment, setNewComment] = useState('');
+  const [reviewerName, setReviewerName] = useState('');
   const [submittingReview, setSubmittingReview] = useState(false);
 
   const { addToCart, isInCart } = useCart();
@@ -43,39 +44,60 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     let isMounted = true;
     setLoading(true);
 
-    import('../lib/apiClient').then(({ safeFetchJson }) => {
-      safeFetchJson<{ product: Product; related: Product[]; reviews: Review[] }>(`/api/products/${slug}`)
-        .then(async (apiRes) => {
-          if (!isMounted) return;
-          if (apiRes.ok && apiRes.data?.product) {
-            setProduct(apiRes.data.product);
-            setRelated(apiRes.data.related || []);
-            setReviews(apiRes.data.reviews || []);
-            setLoading(false);
-            return;
-          }
+    const loadData = async () => {
+      let targetProduct: Product | null = null;
+      let relatedProducts: Product[] = [];
+      let initialReviews: Review[] = [];
 
-          // Fallback on static hosting: search product in local catalog / Firestore
-          try {
-            const dbData = (await import('../../data/db.json')).default;
-            const prods = (dbData.products || []) as Product[];
-            const found = prods.find(p => p.slug === slug || p.id === slug);
-            if (found && isMounted) {
-              setProduct(found);
-              setRelated(prods.filter(p => p.id !== found.id && p.category === found.category).slice(0, 3));
-              const revs = (dbData.reviews || []) as Review[];
-              setReviews(revs.filter(r => r.productId === found.id));
-            }
-          } catch (err) {
-            console.error('Fallback product lookup failed:', err);
-          } finally {
-            if (isMounted) setLoading(false);
+      // 1. Try local db or API
+      try {
+        const { safeFetchJson } = await import('../lib/apiClient');
+        const apiRes = await safeFetchJson<{ product: Product; related: Product[]; reviews: Review[] }>(`/api/products/${slug}`);
+        if (apiRes.ok && apiRes.data?.product) {
+          targetProduct = apiRes.data.product;
+          relatedProducts = apiRes.data.related || [];
+          initialReviews = apiRes.data.reviews || [];
+        }
+      } catch {}
+
+      if (!targetProduct) {
+        try {
+          const dbData = (await import('../../data/db.json')).default;
+          const prods = (dbData.products || []) as Product[];
+          const found = prods.find(p => p.slug === slug || p.id === slug);
+          if (found) {
+            targetProduct = found;
+            relatedProducts = prods.filter(p => p.id !== found.id && p.category === found.category).slice(0, 3);
+            const revs = (dbData.reviews || []) as Review[];
+            initialReviews = revs.filter(r => r.productId === found.id);
           }
-        })
-        .catch(() => {
-          if (isMounted) setLoading(false);
-        });
-    });
+        } catch (err) {
+          console.warn('Fallback product lookup failed:', err);
+        }
+      }
+
+      if (targetProduct && isMounted) {
+        setProduct(targetProduct);
+        setRelated(relatedProducts);
+
+        // 2. Load latest reviews directly from Firestore
+        try {
+          const { getProductReviewsFromFirestore } = await import('../lib/firebase');
+          const firestoreReviews = await getProductReviewsFromFirestore(targetProduct.id, initialReviews);
+          if (firestoreReviews && firestoreReviews.length > 0) {
+            setReviews(firestoreReviews);
+          } else {
+            setReviews(initialReviews);
+          }
+        } catch {
+          setReviews(initialReviews);
+        }
+      }
+
+      if (isMounted) setLoading(false);
+    };
+
+    loadData();
 
     return () => {
       isMounted = false;
@@ -129,46 +151,60 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
     e.preventDefault();
     if (!newComment.trim()) return;
 
+    const author = reviewerName.trim() || user?.name || localStorage.getItem('digishop_client_name') || 'Client Vérifié';
     setSubmittingReview(true);
-    try {
-      const { safeFetchJson } = await import('../lib/apiClient');
-      const apiRes = await safeFetchJson<Review>('/api/reviews', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(localStorage.getItem('digishop_token')
-            ? { Authorization: `Bearer ${localStorage.getItem('digishop_token')}` }
-            : {})
-        },
-        body: JSON.stringify({
-          productId: product.id,
-          productTitle: product.title,
-          userName: user?.name || 'Client Digishop',
-          rating: newRating,
-          comment: newComment.trim()
-        })
-      });
 
-      if (apiRes.ok && apiRes.data) {
-        setReviews(prev => [apiRes.data!, ...prev]);
-      } else {
-        // Optimistic local review for client
-        const localRev: Review = {
-          id: 'rev-' + Date.now(),
-          productId: product.id,
-          productTitle: product.title,
-          userName: user?.name || 'Client Digishop',
-          rating: newRating,
-          comment: newComment.trim(),
-          isVerifiedPurchase: true,
-          isApproved: true,
-          createdAt: new Date().toISOString()
-        };
-        setReviews(prev => [localRev, ...prev]);
+    const newRevId = 'rev-' + Date.now();
+    const newRev: Review = {
+      id: newRevId,
+      productId: product.id,
+      productTitle: product.title,
+      userName: author,
+      rating: newRating,
+      comment: newComment.trim(),
+      isVerifiedPurchase: !!user || true,
+      isApproved: true,
+      createdAt: new Date().toISOString()
+    };
+
+    try {
+      localStorage.setItem('digishop_client_name', author);
+
+      // Save to Firestore
+      try {
+        const { saveReviewToFirestore } = await import('../lib/firebase');
+        await saveReviewToFirestore(newRev);
+      } catch (fbErr) {
+        console.warn('[ProductDetailView] Firestore save warning:', fbErr);
       }
+
+      // Save to backend API
+      try {
+        const { safeFetchJson } = await import('../lib/apiClient');
+        await safeFetchJson<Review>('/api/reviews', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...(localStorage.getItem('digishop_token')
+              ? { Authorization: `Bearer ${localStorage.getItem('digishop_token')}` }
+              : {})
+          },
+          body: JSON.stringify({
+            productId: product.id,
+            productTitle: product.title,
+            userName: author,
+            rating: newRating,
+            comment: newComment.trim()
+          })
+        });
+      } catch {}
+
+      setReviews(prev => [newRev, ...prev]);
       setNewComment('');
-      showToast('Votre avis a été publié avec succès ! Merci.', 'success');
+      window.dispatchEvent(new CustomEvent('digishop:review-added', { detail: newRev }));
+      showToast('Votre avis a été publié avec succès ! Merci de votre contribution.', 'success');
     } catch {
+      setReviews(prev => [newRev, ...prev]);
       showToast('Votre avis a été enregistré avec succès !', 'success');
     } finally {
       setSubmittingReview(false);
@@ -431,6 +467,16 @@ export const ProductDetailView: React.FC<ProductDetailViewProps> = ({
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={reviewerName}
+                  onChange={(e) => setReviewerName(e.target.value)}
+                  placeholder={user?.name ? `Votre nom : ${user.name}` : 'Votre nom ou prénom (ex : Marc D.)'}
+                  className="w-full p-2.5 text-xs bg-slate-50 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-sky-500"
+                />
               </div>
 
               <textarea
