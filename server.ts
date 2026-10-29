@@ -732,6 +732,21 @@ app.get('/api/ipn/paydunya', (_req, res) => {
   res.json({ status: 'active', gateway: 'PayDunya IPN Webhook', ready: true, time: new Date().toISOString() });
 });
 
+// PayPal Public Configuration (Safe for client-side loading)
+app.get('/api/payments/paypal/public-config', (_req, res) => {
+  try {
+    const current = getPayPalConfig();
+    res.json({
+      mode: current.mode,
+      clientId: current.clientId || '',
+      merchantEmail: current.merchantEmail || 'lemaxshop01@gmail.com',
+      isConfigured: Boolean(current.clientId && !current.clientId.startsWith('AZ_'))
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PayPal Order Creation
 app.post('/api/payments/paypal/create-order', async (req, res) => {
   try {

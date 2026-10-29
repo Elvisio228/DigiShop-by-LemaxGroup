@@ -37,6 +37,8 @@ import {
   Check,
   UserCheck,
   Zap,
+  MessageSquare,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -726,6 +728,30 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                 <span className="w-1.5 h-1.5 rounded-full bg-blue-600 dark:bg-blue-400 shrink-0" />
               )}
             </button>
+
+            {/* 8. Avis clients & Témoignages */}
+            <button
+              type="button"
+              onClick={() => {
+                onNavigate('home');
+                onClose();
+                setTimeout(() => {
+                  const el = document.getElementById('customer-reviews');
+                  if (el) {
+                    el.scrollIntoView({ behavior: 'smooth' });
+                  }
+                }, 150);
+              }}
+              className="w-full text-left px-3 py-2.5 rounded-xl text-xs font-semibold flex items-center justify-between transition-all text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800/80"
+            >
+              <div className="flex items-center gap-2.5 min-w-0">
+                <Star className="w-4 h-4 shrink-0 text-amber-500 fill-amber-400" />
+                <span className="truncate">Avis clients & Témoignages</span>
+              </div>
+              <span className="text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-md border border-amber-200/50 dark:border-amber-900/30">
+                ⭐ 4.9/5
+              </span>
+            </button>
           </div>
 
           {/* SECTION 2: ESPACE ADMINISTRATEUR (Visible UNIQUEMENT lorsque l'administrateur est connecté) */}
@@ -820,6 +846,19 @@ export const NavigationDrawer: React.FC<NavigationDrawerProps> = ({
                     >
                       <Tag className="w-3.5 h-3.5 text-blue-500 shrink-0" />
                       <span className="truncate">Coupons</span>
+                    </button>
+
+                    {/* Avis clients */}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onNavigate('admin', 'reviews');
+                        onClose();
+                      }}
+                      className="w-full text-left px-2.5 py-1.5 text-xs rounded-lg text-slate-700 dark:text-slate-300 hover:text-blue-600 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-800 flex items-center gap-2 transition-colors"
+                    >
+                      <MessageSquare className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      <span className="truncate">Avis clients</span>
                     </button>
 
                     {/* Espace Publicitaire */}

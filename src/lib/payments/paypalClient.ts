@@ -12,7 +12,10 @@ export interface PayPalActiveConfig {
 }
 
 /**
- * Retrieve active PayPal configuration from localStorage or Firestore
+ * Retrieve active PayPal configuration with multi-source fallback:
+ * 1. LocalStorage
+ * 2. Backend /api/payments/paypal/public-config
+ * 3. Firestore 'settings/paypal'
  */
 export async function getPayPalActiveConfig(): Promise<PayPalActiveConfig> {
   let config: any = null;
@@ -25,17 +28,38 @@ export async function getPayPalActiveConfig(): Promise<PayPalActiveConfig> {
     }
   } catch {}
 
-  // 2. Fallback to Firestore if empty or not configured
+  // 2. Try backend API if empty or missing clientId
+  if (!config || (!config.live?.clientId && !config.sandbox?.clientId && !config.clientId)) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 2500);
+      const res = await fetch('/api/payments/paypal/public-config', {
+        signal: controller.signal
+      });
+      clearTimeout(timer);
+      if (res.ok) {
+        const data = await res.json();
+        if (data && (data.clientId || data.mode)) {
+          config = data;
+        }
+      }
+    } catch {}
+  }
+
+  // 3. Fallback to Firestore
   if (!config || (!config.live?.clientId && !config.sandbox?.clientId && !config.clientId)) {
     try {
       const { db } = await import('../firebase');
       const { doc, getDoc } = await import('firebase/firestore');
-      const snap = await getDoc(doc(db, 'settings', 'paypal'));
-      if (snap.exists()) {
-        config = snap.data();
+      const snap = await Promise.race([
+        getDoc(doc(db, 'settings', 'paypal')),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('timeout')), 3000))
+      ]);
+      if (snap && (snap as any).exists && (snap as any).exists()) {
+        config = (snap as any).data();
       }
     } catch (e) {
-      console.warn('[PayPalClient] Impossible de charger les paramètres Firestore:', e);
+      console.warn('[PayPalClient] Firestore timeout ou indisponible:', e);
     }
   }
 
@@ -60,7 +84,7 @@ let currentSdkClientId = '';
 let currentSdkCurrency = '';
 
 /**
- * Dynamically loads the official PayPal JS SDK
+ * Dynamically loads the official PayPal JS SDK with an 8-second safety timeout
  */
 export function loadPayPalSdk(clientId: string, currency: string = 'EUR'): Promise<any> {
   const effectiveClientId = clientId.trim() || 'sb';
@@ -93,6 +117,15 @@ export function loadPayPalSdk(clientId: string, currency: string = 'EUR'): Promi
     currentSdkClientId = effectiveClientId;
     currentSdkCurrency = effectiveCurrency;
 
+    const timeoutTimer = setTimeout(() => {
+      paypalSdkPromise = null;
+      reject(
+        new Error(
+          'Délai de connexion aux serveurs PayPal dépassé (8s). Utilisez le bouton de paiement direct ci-dessous.'
+        )
+      );
+    }, 8000);
+
     const script = document.createElement('script');
     script.id = 'paypal-js-sdk';
     script.src = `https://www.paypal.com/sdk/js?client-id=${encodeURIComponent(
@@ -101,14 +134,17 @@ export function loadPayPalSdk(clientId: string, currency: string = 'EUR'): Promi
     script.async = true;
 
     script.onload = () => {
+      clearTimeout(timeoutTimer);
       if ((window as any).paypal) {
         resolve((window as any).paypal);
       } else {
+        paypalSdkPromise = null;
         reject(new Error("Le SDK PayPal s'est chargé mais l'objet global est introuvable."));
       }
     };
 
     script.onerror = () => {
+      clearTimeout(timeoutTimer);
       paypalSdkPromise = null;
       reject(
         new Error(
